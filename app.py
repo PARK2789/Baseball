@@ -142,7 +142,7 @@ st.markdown(f"""
 if st.session_state.view == 'home':
     st.markdown(f"""
     <div class="hero-section">
-        <div class="hero-title">CEO Talk⁺<br>Victory Edition</div>
+        <div class="hero-title">CEO Talk⁺</div>
         <div style="font-size: 16px; opacity: 0.9; margin-top: 8px;">함께 소통하고 함께 응원합니다!</div>
     </div>
     """, unsafe_allow_html=True)
