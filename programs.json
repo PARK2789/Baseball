@@ -29,7 +29,7 @@
         "lon": 127.0725,
         "color": "orange",
         "icon": "utensils",
-        "bg_file": "food.jpg"
+        "bg_file": "food1.jpg"
     },
     "응원 도구 배부": {
         "tag": "CHEER",
