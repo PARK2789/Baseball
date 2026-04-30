@@ -15,7 +15,7 @@ from PIL import Image
 import io
 
 # 1. 페이지 설정
-st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
+st.set_page_config(page_title="CEO Talk+", page_icon="⚾️", layout="centered")
 
 # 2. Firebase / Firestore 설정
 @st.cache_resource
