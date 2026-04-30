@@ -92,7 +92,7 @@ with st.sidebar:
     if is_admin:
         st.success("관리자 모드 활성화")
 
-# 6. 프리미엄 CSS
+# 6. 프리미엄 CSS 및 스크롤 강제 상단 이동 스크립트
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -124,14 +124,12 @@ st.markdown(f"""
     }}
     .card-overlay {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%); z-index: 1; }}
     
-    /* 버튼 스타일 */
     .stButton>button {{ 
         width: 100%; border-radius: 16px; background-color: #003087;
         color: white; font-weight: 700; border: none; height: 3.5em; font-size: 15px; margin-bottom: 10px; 
         box-shadow: 0 4px 12px rgba(0,48,135,0.2);
     }}
     
-    /* 보조 버튼 스타일 (회색) */
     .secondary-btn button {{
         background-color: #F2F2F7 !important; color: #1C1C1E !important; box-shadow: none !important;
     }}
@@ -142,6 +140,14 @@ st.markdown(f"""
     }}
     .cheer-img {{ width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; max-height: 400px; }}
 </style>
+
+<script>
+    // 페이지가 렌더링될 때마다 부모(Streamlit) 창의 스크롤을 맨 위로 올림
+    var mainContent = window.parent.document.querySelector('section.main');
+    if (mainContent) {{
+        mainContent.scrollTo(0, 0);
+    }}
+</script>
 """, unsafe_allow_html=True)
 
 # --- 화면 렌더링 ---
@@ -176,14 +182,12 @@ elif st.session_state.view == 'cheer':
     st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
     st.markdown('<p style="color:#636366; margin-bottom:20px;">현장의 뜨거운 열기를 공유해주세요!</p>', unsafe_allow_html=True)
 
-    # 글쓰기 화면으로 이동하는 버튼
     if st.button("✨ 나도 응원 남기기"):
         navigate_to('upload')
 
     st.markdown("---")
     
     if db:
-        # 최신 데이터 가져오기
         docs = db.collection(COLLECTION_PATH).stream()
         posts = []
         for doc in docs:
@@ -193,7 +197,7 @@ elif st.session_state.view == 'cheer':
         posts.sort(key=lambda x: x.get('timestamp', datetime.min), reverse=True)
 
         if not posts:
-            st.info("아직 올라온 응원이 없습니다. 첫 번째 주인공이 되어보세요!")
+            st.info("아직 올라온 응원이 없습니다.")
         else:
             for post in posts[:40]:
                 img_html = f'<img src="data:image/jpeg;base64,{post["image"]}" class="cheer-img">' if post.get("image") else ""
@@ -212,7 +216,6 @@ elif st.session_state.view == 'cheer':
                 if is_admin:
                     if st.button(f"🗑️ 삭제", key=f"del_{post['id']}"):
                         db.collection(COLLECTION_PATH).document(post['id']).delete()
-                        st.toast("삭제되었습니다.")
                         st.rerun()
     
     st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
@@ -223,27 +226,25 @@ elif st.session_state.view == 'cheer':
 # [3] UPLOAD VIEW (글쓰기 전용 화면)
 elif st.session_state.view == 'upload':
     st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-    st.markdown('<p style="color:#636366; margin-bottom:25px;">오늘의 감동을 기록하세요.</p>', unsafe_allow_html=True)
-
+    
     with st.container():
         st.markdown('<div class="info-box">', unsafe_allow_html=True)
         c_name = st.text_input("닉네임 또는 조", placeholder="예: 5조 승리요정")
-        c_text = st.text_area("응원 메시지 (100자 내외)", placeholder="LG이노텍 화이팅! 오늘 무조건 이깁니다!", max_chars=100)
-        c_file = st.file_uploader("현장 사진 업로드", type=['jpg', 'jpeg', 'png'])
+        c_text = st.text_area("응원 메시지", placeholder="LG이노텍 화이팅!", max_chars=100)
+        c_file = st.file_uploader("사진 선택", type=['jpg', 'jpeg', 'png'])
         st.markdown('</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         with col1:
             if st.button("✅ 게시하기"):
                 if c_name and c_text and db:
-                    with st.spinner("응원을 전송 중입니다..."):
+                    with st.spinner("전송 중..."):
                         img_b64 = compress_image(c_file) if c_file else ""
                         db.collection(COLLECTION_PATH).add({
                             "name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()
                         })
-                        st.toast("응원이 성공적으로 등록되었습니다!")
                         navigate_to('cheer')
-                else: st.warning("이름과 메시지를 모두 입력해주세요.")
+                else: st.warning("이름과 메시지를 입력해주세요.")
         with col2:
             st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
             if st.button("❌ 취소"):
@@ -281,4 +282,3 @@ elif st.session_state.view == 'detail':
         navigate_to('home')
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:30px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
-
