@@ -154,8 +154,8 @@ if st.session_state.view == 'home':
     st.markdown("#### 🚌 이동 안내")
     st.markdown(f"""
     <div class="info-box">
-        <div style="font-weight:800; color:#007AFF; font-size:13px;">📍 잠실행 단체 버스</div>
-        <div style="font-size:15px; color:#1C1C1E; font-weight:600;">각 공장 정문 / 15:30 정시 출발</div>
+        <div style="font-weight:800; color:#007AFF; font-size:13px;">📍 잠실야구강행 단체 버스</div>
+        <div style="font-size:15px; color:#1C1C1E; font-weight:600;">본사 1층 남문 게이트 / 15:30 정시 출발</div>
     </div>
     """, unsafe_allow_html=True)
 
