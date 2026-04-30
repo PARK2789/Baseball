@@ -1,4 +1,3 @@
-```python
 # -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
@@ -187,5 +186,3 @@ elif st.session_state.view == 'detail':
         navigate_to('home')
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:11px; margin-top:10px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
-
-```
