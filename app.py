@@ -15,7 +15,7 @@ from PIL import Image
 import io
 
 # 1. 페이지 설정
-st.set_page_config(page_title="CEO Talk+", page_icon="⚾️", layout="centered")
+st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
 # 2. Firebase / Firestore 설정
 @st.cache_resource
@@ -88,25 +88,33 @@ def normalize_name(text):
 with st.sidebar:
     st.title("🛡️ Admin")
     admin_password = st.text_input("관리자 암호", type="password")
-    # 원하는 암호로 설정하세요
     is_admin = (admin_password == "1234") 
     if is_admin:
         st.success("관리자 모드 활성화")
 
-# 6. 프리미엄 CSS
+# 6. 프리미엄 CSS (상단 여백 수정)
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     .stApp {{ font-family: 'Pretendard', sans-serif; }}
     html, body, [data-testid="stAppViewContainer"] {{ overflow-x: hidden !important; width: 100% !important; }}
-    .block-container {{ padding-top: 1.2rem !important; padding-bottom: 0.5rem !important; max-width: 100% !important; }}
     
+    /* [핵심 수정] 상단 여백을 4rem으로 늘려 짤림 현상 방지 */
+    .block-container {{ 
+        padding-top: 4rem !important; 
+        padding-bottom: 2rem !important; 
+        max-width: 100% !important; 
+    }}
+    
+    /* 홈 화면의 히어로 섹션은 상단 바까지 꽉 차게 보이도록 음수 마진 유지 */
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.55)), url('{hero_bg}');
         background-size: cover; background-position: center;
         padding: 180px 25px 40px 25px; border-radius: 0 0 35px 35px;
-        color: white; text-align: left; margin: -5rem -1rem 1rem -1rem;
+        color: white; text-align: left; 
+        margin: -5.5rem -1rem 1rem -1rem; /* 상단 여백 보정 */
     }}
+    
     .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -2px; }}
     .info-box {{ background-color: #F2F2F7; padding: 14px 18px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 8px; }}
     
@@ -116,7 +124,6 @@ st.markdown(f"""
         display: flex; flex-direction: column; justify-content: flex-end; padding: 18px; color: white;
     }}
     .card-overlay {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%); z-index: 1; }}
-    .card-content {{ position: relative; z-index: 2; pointer-events: none; }}
     
     .stButton>button {{ 
         width: 100%; border-radius: 14px; background-color: #003087;
@@ -140,24 +147,11 @@ st.markdown(f"""
 
 # [1] HOME VIEW
 if st.session_state.view == 'home':
-    st.markdown(f"""
-    <div class="hero-section">
-        <div class="hero-title">CEO Talk⁺</div>
-        <div style="font-size: 16px; opacity: 0.9; margin-top: 8px;">함께 소통하고 함께 응원합니다!</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 8px;">함께 소통하고 함께 응원합니다!</div></div>', unsafe_allow_html=True)
 
     st.markdown("#### 💬 실시간 소통")
     if st.button("📸 승리의 응원벽 참여하기 (사진/댓글)"):
         navigate_to('cheer')
-
-    st.markdown("#### 🚌 이동 안내")
-    st.markdown(f"""
-    <div class="info-box">
-        <div style="font-weight:800; color:#007AFF; font-size:13px;">📍 잠실야구강행 단체 버스</div>
-        <div style="font-size:15px; color:#1C1C1E; font-weight:600;">본사 1층 남문 게이트 / 15:30 정시 출발</div>
-    </div>
-    """, unsafe_allow_html=True)
 
     st.markdown("#### 🏟️ 구장 안내 (잠실 102블록)")
     m = folium.Map(location=[37.5122, 127.0719], zoom_start=16, tiles="cartodbvoyager")
@@ -166,30 +160,20 @@ if st.session_state.view == 'home':
         label_html = f'<div style="font-size: 10px; font-weight: 800; color: #1C1C1E; text-align: center; background-color: rgba(255, 255, 255, 0.85); padding: 2px 6px; border-radius: 8px; border: 1px solid #E5E5EA;">{name}</div>'
         folium.Marker([info["lat"], info["lon"]], icon=folium.features.DivIcon(icon_size=(100,20), icon_anchor=(50, -15), html=label_html)).add_to(m)
     
-    map_res = st_folium(m, width="100%", height=250, key="stadium_map")
-    if map_res and map_res.get("last_object_clicked_popup"):
-        clicked_normalized = normalize_name(map_res["last_object_clicked_popup"])
-        for key in program_data.keys():
-            if normalize_name(key) == clicked_normalized: navigate_to('detail', key)
+    st_folium(m, width="100%", height=250, key="stadium_map")
 
     st.markdown('<h4 style="margin-top:25px; margin-bottom:10px;">🚩 관전 가이드</h4>', unsafe_allow_html=True)
     for name, info in program_data.items():
         img_raw = get_base64_img(info.get("bg_file", ""))
         bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
-        st.markdown(f"""
-        <div class="program-card" style="background-image: url('{bg_url}');">
-            <div class="card-overlay"></div>
-            <div class="card-content">
-                <div style="font-size:11px; font-weight:700; opacity:0.8;">{info.get('tag')}</div>
-                <div style="font-size: 20px; font-weight: 800;">{name}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="program-card" style="background-image: url(\'{bg_url}\');"><div class="card-overlay"></div><div class="card-content"><div style="font-size:11px; font-weight:700; opacity:0.8;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800;">{name}</div></div></div>', unsafe_allow_html=True)
         if st.button(f"{name} 상세보기", key=f"btn_{name}"):
             navigate_to('detail', name)
 
 # [2] CHEER VIEW (실시간 게시판 전용 페이지)
 elif st.session_state.view == 'cheer':
+    # [수정] 제목이 짤리지 않도록 상단에 약간의 공간 추가
+    st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
     st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
     st.markdown('<p style="color:#636366; margin-bottom:20px;">현장의 뜨거운 열기를 공유해주세요!</p>', unsafe_allow_html=True)
 
@@ -235,7 +219,7 @@ elif st.session_state.view == 'cheer':
             """, unsafe_allow_html=True)
             
             if is_admin:
-                if st.button(f"🗑️ 삭제하기", key=f"del_{post['id']}", help="관리자 전용 삭제 버튼"):
+                if st.button(f"🗑️ 삭제하기", key=f"del_{post['id']}"):
                     db.collection(COLLECTION_PATH).document(post['id']).delete()
                     st.toast("삭제 완료!")
                     st.rerun()
@@ -250,10 +234,9 @@ elif st.session_state.view == 'detail':
     img_raw = get_base64_img(item.get("bg_file", ""))
     bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
     
-    # 에러가 났던 복잡한 HTML 부분을 안전하게 분리해서 작성합니다.
     points_html = "".join([f'<div style="margin-bottom:8px; font-size:15px;">• {p}</div>' for p in item.get("points", [])])
     
-    detail_header = f"""
+    st.markdown(f"""
     <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('{bg_url}'); 
                 background-size: cover; background-position: center; height: 160px; 
                 border-radius: 20px; margin: 0 0 10px 0; display: flex; align-items: flex-end; padding: 20px;">
@@ -262,20 +245,13 @@ elif st.session_state.view == 'detail':
             <div style="font-size: 24px; font-weight: 900;">{name}</div>
         </div>
     </div>
-    """
-    
-    detail_body = f"""
     <div style="background-color: #F8F9FA; padding: 20px; border-radius: 22px; border: 1px solid #E5E5EA;">
         <h3 style="margin:0 0 10px 0; font-weight:800;">{item.get('detail_title')}</h3>
         <p style="font-size: 15px; color: #3A3A3C; line-height: 1.5;">{item.get('desc')}</p>
         <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 15px 0;">
         {points_html}
     </div>
-    <div style="margin-top:15px;"></div>
-    """
-    
-    st.markdown(detail_header, unsafe_allow_html=True)
-    st.markdown(detail_body, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     if st.button("🏠 메인으로 돌아가기"):
         navigate_to('home')
