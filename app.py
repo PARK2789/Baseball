@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -17,7 +18,44 @@ import io
 # 1. 페이지 설정
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
-# 2. Firebase / Firestore 설정
+# 2. 강력한 스크롤 초기화 함수 (제안해주신 로직 반영)
+def force_scroll_top():
+    components.html(
+        """
+        <script>
+        function scrollTopNow() {
+            const doc = window.parent.document;
+            const targets = [
+                doc.querySelector('section[data-testid="stMain"]'),
+                doc.querySelector('div[data-testid="stAppViewContainer"]'),
+                doc.scrollingElement,
+                doc.documentElement,
+                doc.body
+            ].filter(Boolean);
+            
+            targets.forEach(el => {
+                try {
+                    el.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                } catch(e) {
+                    el.scrollTop = 0;
+                }
+                el.scrollTop = 0;
+            });
+            try {
+                window.parent.scrollTo(0, 0);
+            } catch(e) {}
+        }
+        // 즉시 실행 및 렌더링 타이밍을 고려한 다단계 실행
+        scrollTopNow();
+        setTimeout(scrollTopNow, 50);
+        setTimeout(scrollTopNow, 150);
+        setTimeout(scrollTopNow, 300);
+        </script>
+        """,
+        height=0,
+    )
+
+# 3. Firebase / Firestore 설정
 @st.cache_resource
 def get_db():
     try:
@@ -31,7 +69,7 @@ db = get_db()
 app_id = "ceo-talk-victory-2026"
 COLLECTION_PATH = f"artifacts/{app_id}/public/data/cheers"
 
-# 3. 이미지 처리 및 데이터 로드
+# 4. 이미지 처리 및 데이터 로드
 @st.cache_data
 def get_base64_img(file_path):
     if os.path.exists(file_path):
@@ -67,11 +105,18 @@ program_data = load_app_data()
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 4. 세션 상태 관리 및 내비게이션
+# 5. 세션 상태 관리 및 내비게이션
 if 'view' not in st.session_state:
     st.session_state.view = 'home'
+if 'prev_view' not in st.session_state:
+    st.session_state.prev_view = 'home'
 if 'target' not in st.session_state:
     st.session_state.target = None
+
+# 페이지 전환 감지 및 스크롤 초기화 실행
+if st.session_state.prev_view != st.session_state.view:
+    force_scroll_top()
+    st.session_state.prev_view = st.session_state.view
 
 def navigate_to(view, target=None):
     st.session_state.view = view
@@ -84,7 +129,7 @@ def normalize_name(text):
     clean = "".join(unicodedata.normalize('NFC', clean).split())
     return clean
 
-# 5. 관리자 설정 (사이드바)
+# 6. 관리자 설정 (사이드바)
 with st.sidebar:
     st.title("🛡️ Admin")
     admin_password = st.text_input("관리자 암호", type="password")
@@ -92,14 +137,13 @@ with st.sidebar:
     if is_admin:
         st.success("관리자 모드 활성화")
 
-# 6. 프리미엄 CSS 및 스크롤 강제 상단 이동 스크립트
+# 7. 프리미엄 CSS
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     .stApp {{ font-family: 'Pretendard', sans-serif; }}
     html, body, [data-testid="stAppViewContainer"] {{ overflow-x: hidden !important; width: 100% !important; }}
     
-    /* 상단 여백 확보 */
     .block-container {{ 
         padding-top: 4.5rem !important; 
         padding-bottom: 2rem !important; 
@@ -109,7 +153,7 @@ st.markdown(f"""
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.55)), url('{hero_bg}');
         background-size: cover; background-position: center;
-        padding: 180px 25px 40px 25px; border-radius: 0 0 35px 35px;
+        padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
         color: white; text-align: left; 
         margin: -6rem -1rem 1rem -1rem;
     }}
@@ -140,14 +184,6 @@ st.markdown(f"""
     }}
     .cheer-img {{ width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; max-height: 400px; }}
 </style>
-
-<script>
-    // 페이지가 렌더링될 때마다 부모(Streamlit) 창의 스크롤을 맨 위로 올림
-    var mainContent = window.parent.document.querySelector('section.main');
-    if (mainContent) {{
-        mainContent.scrollTo(0, 0);
-    }}
-</script>
 """, unsafe_allow_html=True)
 
 # --- 화면 렌더링 ---
@@ -282,3 +318,4 @@ elif st.session_state.view == 'detail':
         navigate_to('home')
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:30px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+
