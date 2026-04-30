@@ -13,7 +13,7 @@
         "lon": 127.0719,
         "color": "red",
         "icon": "chair",
-        "bg_file": "stadium.jpg"
+        "bg_file": "seat.jpg"
     },
     "치맥 & 도시락 수령": {
         "tag": "FOOD",
