@@ -1,4 +1,3 @@
-```python
 # -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
@@ -138,4 +137,3 @@ elif st.session_state.view == 'detail':
     st.write(f"상세 정보: {st.session_state.target}")
     if st.button("돌아가기"): navigate_to('home')
 
-```
