@@ -18,7 +18,6 @@ import io
 # 1. 페이지 설정 및 초기화
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
-# 세션 상태 초기화
 if 'view' not in st.session_state:
     st.session_state.view = 'home'
 if 'prev_view' not in st.session_state:
@@ -26,7 +25,7 @@ if 'prev_view' not in st.session_state:
 if 'target' not in st.session_state:
     st.session_state.target = None
 
-# 2. 강력한 스크롤 초기화 함수 (부모 DOM 제어)
+# 2. 강력한 스크롤 초기화 함수
 def force_scroll_top():
     components.html(
         """
@@ -40,11 +39,8 @@ def force_scroll_top():
                 doc.documentElement,
                 doc.body
             ].filter(Boolean);
-            
             targets.forEach(el => {
-                try {
-                    el.scrollTo({ top: 0, left: 0, behavior: "instant" });
-                } catch(e) { el.scrollTop = 0; }
+                try { el.scrollTo({ top: 0, left: 0, behavior: "instant" }); } catch(e) { el.scrollTop = 0; }
                 el.scrollTop = 0;
             });
             try { window.parent.scrollTo(0, 0); } catch(e) {}
@@ -81,7 +77,6 @@ def get_base64_img(file_path):
     return ""
 
 def compress_image(uploaded_file):
-    """사진 회전 방지 및 압축"""
     img = Image.open(uploaded_file)
     img = ImageOps.exif_transpose(img) 
     if img.mode in ("RGBA", "P"): img = img.convert("RGB")
@@ -102,7 +97,7 @@ else: program_data = {}
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. 세련된 그레이톤 CSS
+# 5. 세련된 그레이톤 CSS 및 디자인 수정
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -110,37 +105,41 @@ st.markdown(f"""
     .block-container {{ padding-top: 4.5rem !important; padding-bottom: 2rem !important; max-width: 100% !important; }}
     
     .hero-section {{
-        background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.55)), url('{hero_bg}');
+        background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('{hero_bg}');
         background-size: cover; background-position: center;
         padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
         color: white; margin: -6rem -1rem 1.5rem -1rem;
     }}
     .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
+    
     .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
     
-    /* 세련된 버튼 스타일: 기존 네이비를 버리고 고급스러운 다크 그레이 적용 */
     .stButton>button {{ 
         width: 100%; border-radius: 16px; background-color: #3A3A3C;
         color: white; font-weight: 600; height: 3.6em; font-size: 15px; margin-bottom: 12px; 
         border: none; transition: all 0.2s ease;
         box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     }}
-    .stButton>button:active {{ transform: scale(0.98); background-color: #1C1C1E; }}
     
-    /* 보조 버튼 (라이트 그레이) */
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
-
-    .nav-btn-container {{ margin-top: 35px !important; }}
 
     .cheer-card {{ background-color: white; border-radius: 22px; padding: 20px; border: 1px solid #F2F2F7; margin-bottom: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }}
     .cheer-img {{ width: 100%; border-radius: 15px; margin-top: 12px; object-fit: cover; max-height: 500px; }}
     
+    /* [수정] 카드 그라데이션 제거 및 선명도 향상 */
     .program-card {{
         position: relative; height: 170px; border-radius: 24px; margin-bottom: 6px; 
         overflow: hidden; background-size: cover; background-position: center; 
-        display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; color: white;
+        display: flex; flex-direction: column; justify-content: flex-end; padding: 20px;
+        border: 1px solid #E5E5EA;
     }}
-    .card-overlay {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 25%, rgba(0,0,0,0.8) 100%); z-index: 1; }}
+    .card-overlay {{ display: none; }} /* 그라데이션 제거 */
+    .card-content {{ position: relative; z-index: 2; pointer-events: none; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); }}
+    
+    /* 예시 안내 박스 스타일 */
+    .example-box {{
+        background-color: #FFF9F9; border: 1px dashed #FF3B30; padding: 15px; border-radius: 15px; margin-bottom: 20px;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -164,8 +163,6 @@ with app_canvas:
         st.markdown("#### 💬 현장 소통 & 응원")
         if st.button("📸 승리의 응원벽 참여 (사진/댓글)"):
             navigate_to('cheer')
-        
-        # [NEW] 응원가 전용 버튼
         if st.button("📣 LG트윈스 응원가 배우기"):
             navigate_to('cheer_video')
 
@@ -190,31 +187,23 @@ with app_canvas:
         for name, info in program_data.items():
             img_raw = get_base64_img(info.get("bg_file", ""))
             bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
-            st.markdown(f'<div class="program-card" style="background-image: url(\'{bg_url}\');"><div class="card-overlay"></div><div class="card-content"><div style="font-size:11px; font-weight:700; opacity:0.8;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800;">{name}</div></div></div>', unsafe_allow_html=True)
+            # 디자인 수정: 이미지 자체의 색감을 강조
+            st.markdown(f'<div class="program-card" style="background-image: url(\'{bg_url}\');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white; background:rgba(0,0,0,0.3); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white;">{name}</div></div></div>', unsafe_allow_html=True)
             if st.button(f"{name} 상세보기", key=f"btn_{name}"):
                 navigate_to('detail', name)
 
-    # [2] CHEER VIDEO VIEW (응원가 전용 페이지)
+    # [2] CHEER VIDEO VIEW
     elif st.session_state.view == 'cheer_video':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📣 응원가 배우기</h2>', unsafe_allow_html=True)
-        st.markdown('<p style="color:#636366; margin-bottom:25px;">함께 목소리를 높여 승리를 기원합니다!</p>', unsafe_allow_html=True)
-        
-        # 수정된 유튜브 주소 적용
         st.video("https://m.youtube.com/watch?v=BhwoJFjkAf8")
-        
-        st.markdown('<div class="info-box" style="margin-top:20px; font-size:14px; line-height:1.6;">최강 LG의 뜨거운 함성!<br>영상을 보며 응원가를 미리 익혀보세요.</div>', unsafe_allow_html=True)
-        
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"):
-            navigate_to('home')
+        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
     # [3] CHEER FEED VIEW (게시판)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
-        if st.button("✨ 나도 응원 남기기"):
-            navigate_to('upload')
-
+        if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
         st.markdown("---")
         if db:
             docs = db.collection(COLLECTION_PATH).stream()
@@ -227,29 +216,53 @@ with app_canvas:
                     if st.button(f"🗑️ 삭제", key=f"del_{post['id']}"):
                         db.collection(COLLECTION_PATH).document(post['id']).delete()
                         st.rerun()
-        
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"):
-            navigate_to('home')
+        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [4] UPLOAD VIEW
+    # [4] UPLOAD VIEW (안내 및 예시 추가)
     elif st.session_state.view == 'upload':
-        st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
+        # 야구공 그래픽 삽입
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 10px;">
+            <svg width="60" height="60" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="white" stroke="#E5E5EA" stroke-width="2"/>
+                <path d="M20 30 Q50 50 20 70" fill="none" stroke="#FF3B30" stroke-width="3"/>
+                <path d="M80 30 Q50 50 80 70" fill="none" stroke="#FF3B30" stroke-width="3"/>
+                <text x="50" y="55" font-size="12" font-weight="900" text-anchor="middle" fill="#FF3B30" font-family="Pretendard">LG TWINS</text>
+            </svg>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<h2 style="font-weight:900; text-align:center; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
+        
+        # [수정] 작성 예시 및 이벤트 안내 박스
+        st.markdown(f"""
+        <div class="example-box">
+            <div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:8px;">🎁 참여 이벤트 안내</div>
+            <div style="font-size:14px; color:#3A3A3C; line-height:1.6;">
+                현장 분위기를 잘 표현한 사진이나 뜨거운 소감을 남겨주세요!<br>
+                <b>(작성 예시: CEO와 셀카, 열정적인 응원 장면, LG 득점 순간, 동료와의 인증샷 등)</b><br><br>
+                <span style="color:#FF3B30;">✨ 참여해주신 분들께는 추첨을 통해 소정의 상품을 드립니다!</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
         with st.container():
-            c_name = st.text_input("닉네임 또는 조")
-            c_text = st.text_area("응원 메시지")
-            c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
+            c_name = st.text_input("닉네임 또는 조 (예: 5조 홍길동)")
+            c_text = st.text_area("현장 소감 및 응원 메시지")
+            c_file = st.file_uploader("현장 사진 업로드", type=['jpg', 'jpeg', 'png'])
             
-            if st.button("✅ 게시하기"):
+            if st.button("✅ 게시판에 등록하기"):
                 if c_name and c_text and db:
-                    img_b64 = compress_image(c_file) if c_file else ""
-                    db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
-                    navigate_to('cheer')
+                    with st.spinner("이미지 최적화 중..."):
+                        img_b64 = compress_image(c_file) if c_file else ""
+                        db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
+                        navigate_to('cheer')
+                else: st.warning("이름과 메시지를 모두 입력해주세요.")
             
             st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-            if st.button("❌ 취소"):
-                navigate_to('cheer')
+            if st.button("❌ 취소"): navigate_to('cheer')
             st.markdown('</div>', unsafe_allow_html=True)
 
     # [5] DETAIL VIEW
@@ -261,10 +274,8 @@ with app_canvas:
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
         
         st.markdown(f"""
-        <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('{bg_url}'); 
-                    background-size: cover; background-position: center; height: 180px; 
-                    border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
-            <div style="color: white;">
+        <div style="background: url('{bg_url}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
+            <div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                 <div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div>
                 <div style="font-size: 26px; font-weight: 900;">{name}</div>
             </div>
@@ -276,10 +287,8 @@ with app_canvas:
             {points_html}
         </div>
         """, unsafe_allow_html=True)
-        
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"):
-            navigate_to('home')
+        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
