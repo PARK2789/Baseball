@@ -83,7 +83,7 @@ def get_base64_img(file_path):
 def compress_image(uploaded_file):
     """사진 회전 방지 및 압축"""
     img = Image.open(uploaded_file)
-    img = ImageOps.exif_transpose(img) # EXIF 정보를 기반으로 회전 자동 보정
+    img = ImageOps.exif_transpose(img) 
     if img.mode in ("RGBA", "P"): img = img.convert("RGB")
     img.thumbnail((800, 800), Image.Resampling.LANCZOS)
     img_byte_arr = io.BytesIO()
@@ -102,77 +102,79 @@ else: program_data = {}
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. 프리미엄 CSS (여백 및 버튼 디자인)
+# 5. 세련된 그레이톤 CSS
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    .stApp {{ font-family: 'Pretendard', sans-serif; }}
+    .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
     .block-container {{ padding-top: 4.5rem !important; padding-bottom: 2rem !important; max-width: 100% !important; }}
     
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.55)), url('{hero_bg}');
         background-size: cover; background-position: center;
         padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
-        color: white; margin: -6rem -1rem 1rem -1rem;
+        color: white; margin: -6rem -1rem 1.5rem -1rem;
     }}
-    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; }}
-    .info-box {{ background-color: #F2F2F7; padding: 16px 20px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
+    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
+    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
+    
+    /* 세련된 버튼 스타일: 기존 네이비를 버리고 고급스러운 다크 그레이 적용 */
+    .stButton>button {{ 
+        width: 100%; border-radius: 16px; background-color: #3A3A3C;
+        color: white; font-weight: 600; height: 3.6em; font-size: 15px; margin-bottom: 12px; 
+        border: none; transition: all 0.2s ease;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }}
+    .stButton>button:active {{ transform: scale(0.98); background-color: #1C1C1E; }}
+    
+    /* 보조 버튼 (라이트 그레이) */
+    .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
+
+    .nav-btn-container {{ margin-top: 35px !important; }}
+
+    .cheer-card {{ background-color: white; border-radius: 22px; padding: 20px; border: 1px solid #F2F2F7; margin-bottom: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }}
+    .cheer-img {{ width: 100%; border-radius: 15px; margin-top: 12px; object-fit: cover; max-height: 500px; }}
     
     .program-card {{
-        position: relative; height: 160px; border-radius: 22px; margin-bottom: 4px; 
+        position: relative; height: 170px; border-radius: 24px; margin-bottom: 6px; 
         overflow: hidden; background-size: cover; background-position: center; 
-        display: flex; flex-direction: column; justify-content: flex-end; padding: 18px; color: white;
+        display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; color: white;
     }}
-    .card-overlay {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%); z-index: 1; }}
-    
-    .stButton>button {{ 
-        width: 100%; border-radius: 16px; background-color: #003087;
-        color: white; font-weight: 700; height: 3.5em; font-size: 15px; margin-bottom: 12px; 
-        box-shadow: 0 4px 12px rgba(0,48,135,0.15);
-    }}
-    
-    .nav-btn-container {{ margin-top: 40px !important; }}
-    .secondary-btn button {{ background-color: #F2F2F7 !important; color: #1C1C1E !important; box-shadow: none !important; }}
-
-    .cheer-card {{ background-color: white; border-radius: 20px; padding: 18px; border: 1px solid #E5E5EA; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }}
-    .cheer-img {{ width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; max-height: 500px; }}
+    .card-overlay {{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, rgba(0,0,0,0) 25%, rgba(0,0,0,0.8) 100%); z-index: 1; }}
 </style>
 """, unsafe_allow_html=True)
 
-# 6. 화면 렌더링 컨트롤러 (View 가드)
+# 6. 화면 렌더링 로직
 
 if st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.prev_view = st.session_state.view
 
-# 관리자 인증
 with st.sidebar:
-    admin_pw = st.text_input("Admin Password", type="password")
+    admin_pw = st.text_input("Admin", type="password")
     is_admin = (admin_pw == "1234")
 
-# 메인 컨테이너
-app_main = st.container()
+app_canvas = st.container()
 
-with app_main:
+with app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 8px;">함께 소통하고 함께 응원합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
 
-        st.markdown("#### 💬 실시간 소통")
-        if st.button("📸 승리의 응원벽 참여하기 (사진/댓글)"):
+        st.markdown("#### 💬 현장 소통 & 응원")
+        if st.button("📸 승리의 응원벽 참여 (사진/댓글)"):
             navigate_to('cheer')
-
-        # [NEW] 응원가 및 경기 정보 섹션
-        st.markdown("#### 🔥 응원 & 실시간 정보")
-        with st.expander("⚾️ LG트윈스 응원가 배우기", expanded=False):
-            st.video("https://www.youtube.com/watch?v=BhwoJFjkAf8")
-            st.markdown('<p style="font-size:13px; color:#8E8E93; text-align:center;">미리 배우고 함께 목소리를 높여주세요!</p>', unsafe_allow_html=True)
         
+        # [NEW] 응원가 전용 버튼
+        if st.button("📣 LG트윈스 응원가 배우기"):
+            navigate_to('cheer_video')
+
+        st.markdown("#### 🏟️ 실시간 경기 정보")
         st.markdown(f"""
-        <div style="margin-bottom: 20px;">
+        <div style="margin-bottom: 25px;">
             <a href="https://m.sports.naver.com/baseball/index" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #03C75A; color: white; padding: 16px; border-radius: 16px; text-align: center; font-weight: 800; box-shadow: 0 4px 10px rgba(3,199,90,0.2);">
-                    📢 네이버 실시간 경기 정보 확인하기
+                <div style="background-color: #F2F2F7; color: #1C1C1E; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700; border: 1px solid #E5E5EA;">
+                    ⚾️ 네이버 스포츠 중계 센터 바로가기
                 </div>
             </a>
         </div>
@@ -184,7 +186,7 @@ with app_main:
             folium.Marker([info["lat"], info["lon"]], popup=folium.Popup(name, max_width=150), icon=folium.Icon(color=info["color"], icon=info["icon"], prefix='fa')).add_to(m)
         st_folium(m, width="100%", height=250, key="stadium_map")
 
-        st.markdown('<h4 style="margin-top:25px; margin-bottom:10px;">🚩 관전 가이드</h4>', unsafe_allow_html=True)
+        st.markdown('<h4 style="margin-top:25px; margin-bottom:12px;">🚩 관전 가이드</h4>', unsafe_allow_html=True)
         for name, info in program_data.items():
             img_raw = get_base64_img(info.get("bg_file", ""))
             bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
@@ -192,7 +194,22 @@ with app_main:
             if st.button(f"{name} 상세보기", key=f"btn_{name}"):
                 navigate_to('detail', name)
 
-    # [2] CHEER VIEW (피드)
+    # [2] CHEER VIDEO VIEW (응원가 전용 페이지)
+    elif st.session_state.view == 'cheer_video':
+        st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📣 응원가 배우기</h2>', unsafe_allow_html=True)
+        st.markdown('<p style="color:#636366; margin-bottom:25px;">함께 목소리를 높여 승리를 기원합니다!</p>', unsafe_allow_html=True)
+        
+        # 수정된 유튜브 주소 적용
+        st.video("https://m.youtube.com/watch?v=BhwoJFjkAf8")
+        
+        st.markdown('<div class="info-box" style="margin-top:20px; font-size:14px; line-height:1.6;">최강 LG의 뜨거운 함성!<br>영상을 보며 응원가를 미리 익혀보세요.</div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
+        if st.button("🏠 메인으로 돌아가기"):
+            navigate_to('home')
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # [3] CHEER FEED VIEW (게시판)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         if st.button("✨ 나도 응원 남기기"):
@@ -216,28 +233,26 @@ with app_main:
             navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [3] UPLOAD VIEW
+    # [4] UPLOAD VIEW
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
         with st.container():
-            c_name = st.text_input("닉네임 또는 조", placeholder="예: LG이노텍 3조")
-            c_text = st.text_area("응원 메시지", placeholder="최강 LG! 필승 이노텍!")
-            c_file = st.file_uploader("현장 사진 업로드", type=['jpg', 'jpeg', 'png'])
+            c_name = st.text_input("닉네임 또는 조")
+            c_text = st.text_area("응원 메시지")
+            c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
             
-            if st.button("✅ 게시판에 등록하기"):
+            if st.button("✅ 게시하기"):
                 if c_name and c_text and db:
-                    with st.spinner("이미지 최적화 중..."):
-                        img_b64 = compress_image(c_file) if c_file else ""
-                        db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
-                        navigate_to('cheer')
-                else: st.warning("이름과 메시지를 모두 입력해주세요.")
+                    img_b64 = compress_image(c_file) if c_file else ""
+                    db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
+                    navigate_to('cheer')
             
             st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
             if st.button("❌ 취소"):
                 navigate_to('cheer')
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # [4] DETAIL VIEW
+    # [5] DETAIL VIEW
     elif st.session_state.view == 'detail':
         name = st.session_state.target
         item = program_data.get(name, {})
@@ -254,7 +269,7 @@ with app_main:
                 <div style="font-size: 26px; font-weight: 900;">{name}</div>
             </div>
         </div>
-        <div style="background-color: #F8F9FA; padding: 28px; border-radius: 28px; border: 1px solid #E5E5EA;">
+        <div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;">
             <h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3>
             <p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p>
             <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">
