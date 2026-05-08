@@ -12,7 +12,7 @@ import unicodedata
 from datetime import datetime
 from google.cloud import firestore
 from google.oauth2 import service_account
-from PIL import Image, ImageOps # ImageOps 추가 (회전 방지용)
+from PIL import Image, ImageOps
 import io
 
 # 1. 페이지 설정 및 초기화
@@ -26,7 +26,7 @@ if 'prev_view' not in st.session_state:
 if 'target' not in st.session_state:
     st.session_state.target = None
 
-# 2. 강력한 스크롤 초기화 함수 (제안해주신 최적 로직)
+# 2. 강력한 스크롤 초기화 함수 (부모 DOM 제어)
 def force_scroll_top():
     components.html(
         """
@@ -52,7 +52,7 @@ def force_scroll_top():
         scrollTopNow();
         setTimeout(scrollTopNow, 30);
         setTimeout(scrollTopNow, 100);
-        setTimeout(scrollTopNow, 300);
+        setTimeout(scrollTopNow, 400);
         </script>
         """,
         height=0,
@@ -81,17 +81,11 @@ def get_base64_img(file_path):
     return ""
 
 def compress_image(uploaded_file):
-    """사진 회전 방지 로직 및 압축 포함"""
+    """사진 회전 방지 및 압축"""
     img = Image.open(uploaded_file)
-    
-    # [핵심] EXIF 정보를 기반으로 사진을 올바른 방향으로 회전시킴
-    img = ImageOps.exif_transpose(img)
-    
+    img = ImageOps.exif_transpose(img) # EXIF 정보를 기반으로 회전 자동 보정
     if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-    
-    # 긴 축 기준 800px로 리사이징
     img.thumbnail((800, 800), Image.Resampling.LANCZOS)
-    
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG', quality=75)
     return base64.b64encode(img_byte_arr.getvalue()).decode()
@@ -108,7 +102,7 @@ else: program_data = {}
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. 프리미엄 CSS
+# 5. 프리미엄 CSS (여백 및 버튼 디자인)
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -137,15 +131,15 @@ st.markdown(f"""
         box-shadow: 0 4px 12px rgba(0,48,135,0.15);
     }}
     
-    /* 하단 버튼 컨테이너 - 여백 확보 */
-    .nav-btn-container {{ margin-top: 40px !important; padding-top: 10px; }}
+    .nav-btn-container {{ margin-top: 40px !important; }}
+    .secondary-btn button {{ background-color: #F2F2F7 !important; color: #1C1C1E !important; box-shadow: none !important; }}
 
     .cheer-card {{ background-color: white; border-radius: 20px; padding: 18px; border: 1px solid #E5E5EA; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }}
     .cheer-img {{ width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; max-height: 500px; }}
 </style>
 """, unsafe_allow_html=True)
 
-# 6. 화면 렌더링 (View 가드 및 스크롤 처리)
+# 6. 화면 렌더링 컨트롤러 (View 가드)
 
 if st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
@@ -156,17 +150,33 @@ with st.sidebar:
     admin_pw = st.text_input("Admin Password", type="password")
     is_admin = (admin_pw == "1234")
 
-# 메인 캔버스
-app_canvas = st.container()
+# 메인 컨테이너
+app_main = st.container()
 
-with app_canvas:
-    # [HOME VIEW]
+with app_main:
+    # [1] HOME VIEW
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 8px;">함께 소통하고 함께 응원합니다!</div></div>', unsafe_allow_html=True)
 
         st.markdown("#### 💬 실시간 소통")
-        if st.button("📸 승리의 응원벽 참여하기"):
+        if st.button("📸 승리의 응원벽 참여하기 (사진/댓글)"):
             navigate_to('cheer')
+
+        # [NEW] 응원가 및 경기 정보 섹션
+        st.markdown("#### 🔥 응원 & 실시간 정보")
+        with st.expander("⚾️ LG트윈스 응원가 배우기", expanded=False):
+            st.video("https://www.youtube.com/watch?v=BhwoJFkAf8")
+            st.markdown('<p style="font-size:13px; color:#8E8E93; text-align:center;">미리 배우고 함께 목소리를 높여주세요!</p>', unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div style="margin-bottom: 20px;">
+            <a href="https://m.sports.naver.com/baseball/index" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #03C75A; color: white; padding: 16px; border-radius: 16px; text-align: center; font-weight: 800; box-shadow: 0 4px 10px rgba(3,199,90,0.2);">
+                    📢 네이버 실시간 경기 정보 확인하기
+                </div>
+            </a>
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown("#### 🏟️ 구장 안내 (잠실 102블록)")
         m = folium.Map(location=[37.5122, 127.0719], zoom_start=16, tiles="cartodbvoyager")
@@ -182,7 +192,7 @@ with app_canvas:
             if st.button(f"{name} 상세보기", key=f"btn_{name}"):
                 navigate_to('detail', name)
 
-    # [CHEER VIEW - 피드]
+    # [2] CHEER VIEW (피드)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         if st.button("✨ 나도 응원 남기기"):
@@ -193,7 +203,7 @@ with app_canvas:
             docs = db.collection(COLLECTION_PATH).stream()
             posts = [doc.to_dict() | {"id": doc.id} for doc in docs]
             posts.sort(key=lambda x: x.get('timestamp', datetime.min), reverse=True)
-            for post in posts[:50]:
+            for post in posts[:40]:
                 img_html = f'<img src="data:image/jpeg;base64,{post["image"]}" class="cheer-img">' if post.get("image") else ""
                 st.markdown(f'<div class="cheer-card"><b>👤 {post["name"]}</b><br>{post["text"]}{img_html}</div>', unsafe_allow_html=True)
                 if is_admin:
@@ -201,33 +211,33 @@ with app_canvas:
                         db.collection(COLLECTION_PATH).document(post['id']).delete()
                         st.rerun()
         
-        st.markdown('<div class="nav-btn-container">', unsafe_allow_html=True)
+        st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"):
             navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [UPLOAD VIEW]
+    # [3] UPLOAD VIEW
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
         with st.container():
-            c_name = st.text_input("닉네임 또는 조", placeholder="예: LG이노텍 5조")
-            c_text = st.text_area("응원 메시지", placeholder="승리 가즈아!")
-            c_file = st.file_uploader("현장 사진 (정방향 자동 보정)", type=['jpg', 'jpeg', 'png'])
+            c_name = st.text_input("닉네임 또는 조", placeholder="예: LG이노텍 3조")
+            c_text = st.text_area("응원 메시지", placeholder="최강 LG! 필승 이노텍!")
+            c_file = st.file_uploader("현장 사진 업로드", type=['jpg', 'jpeg', 'png'])
             
-            if st.button("✅ 게시하기"):
+            if st.button("✅ 게시판에 등록하기"):
                 if c_name and c_text and db:
-                    with st.spinner("이미지 최적화 및 업로드 중..."):
+                    with st.spinner("이미지 최적화 중..."):
                         img_b64 = compress_image(c_file) if c_file else ""
                         db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
                         navigate_to('cheer')
                 else: st.warning("이름과 메시지를 모두 입력해주세요.")
             
-            st.markdown('<div class="nav-btn-container">', unsafe_allow_html=True)
+            st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
             if st.button("❌ 취소"):
                 navigate_to('cheer')
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # [DETAIL VIEW]
+    # [4] DETAIL VIEW
     elif st.session_state.view == 'detail':
         name = st.session_state.target
         item = program_data.get(name, {})
@@ -240,20 +250,19 @@ with app_canvas:
                     background-size: cover; background-position: center; height: 180px; 
                     border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
             <div style="color: white;">
-                <div style="font-size: 11px; font-weight: 700; opacity: 0.8; letter-spacing: 1px;">{item.get('tag')}</div>
-                <div style="font-size: 26px; font-weight: 900; line-height: 1.1;">{name}</div>
+                <div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div>
+                <div style="font-size: 26px; font-weight: 900;">{name}</div>
             </div>
         </div>
         <div style="background-color: #F8F9FA; padding: 28px; border-radius: 28px; border: 1px solid #E5E5EA;">
-            <h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E; font-size: 22px;">{item.get('detail_title')}</h3>
+            <h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3>
             <p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p>
             <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">
             {points_html}
         </div>
         """, unsafe_allow_html=True)
         
-        # [수정] 버튼 간 여백 확보를 위해 컨테이너로 감쌈
-        st.markdown('<div class="nav-btn-container">', unsafe_allow_html=True)
+        st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"):
             navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
