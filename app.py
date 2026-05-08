@@ -25,7 +25,7 @@ if 'prev_view' not in st.session_state:
 if 'target' not in st.session_state:
     st.session_state.target = None
 
-# 2. 강력한 스크롤 초기화 함수
+# 2. 강력한 스크롤 초기화 함수 (부모 DOM 스크롤 제어)
 def force_scroll_top():
     components.html(
         """
@@ -78,7 +78,7 @@ def get_base64_img(file_path):
 
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
-    img = ImageOps.exif_transpose(img) 
+    img = ImageOps.exif_transpose(img) # 사진 회전 자동 보정
     if img.mode in ("RGBA", "P"): img = img.convert("RGB")
     img.thumbnail((800, 800), Image.Resampling.LANCZOS)
     img_byte_arr = io.BytesIO()
@@ -97,7 +97,7 @@ else: program_data = {}
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. 세련된 그레이톤 CSS 및 디자인 수정
+# 5. 디자인 시스템 (CSS)
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -126,24 +126,21 @@ st.markdown(f"""
     .cheer-card {{ background-color: white; border-radius: 22px; padding: 20px; border: 1px solid #F2F2F7; margin-bottom: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }}
     .cheer-img {{ width: 100%; border-radius: 15px; margin-top: 12px; object-fit: cover; max-height: 500px; }}
     
-    /* [수정] 카드 그라데이션 제거 및 선명도 향상 */
     .program-card {{
-        position: relative; height: 170px; border-radius: 24px; margin-bottom: 6px; 
+        position: relative; height: 170px; border-radius: 24px; margin-bottom: 8px; 
         overflow: hidden; background-size: cover; background-position: center; 
         display: flex; flex-direction: column; justify-content: flex-end; padding: 20px;
         border: 1px solid #E5E5EA;
     }}
-    .card-overlay {{ display: none; }} /* 그라데이션 제거 */
     .card-content {{ position: relative; z-index: 2; pointer-events: none; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); }}
     
-    /* 예시 안내 박스 스타일 */
     .example-box {{
         background-color: #FFF9F9; border: 1px dashed #FF3B30; padding: 15px; border-radius: 15px; margin-bottom: 20px;
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# 6. 화면 렌더링 로직
+# 6. 화면 렌더링 컨트롤러
 
 if st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
@@ -159,6 +156,19 @@ with app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+
+        # [출발 안내 섹션]
+        st.markdown("#### 🚌 이동 및 집결 안내")
+        st.markdown(f"""
+        <div class="info-box">
+            <div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div>
+            <div style="font-size:15px; color:#1C1C1E; line-height:1.6;">
+                • <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>
+                • <b>집결:</b> 16:25까지 집결 완료<br>
+                • <b>출발:</b> 16:30 정시 출발
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown("#### 💬 현장 소통 & 응원")
         if st.button("📸 승리의 응원벽 참여 (사진/댓글)"):
@@ -187,10 +197,20 @@ with app_canvas:
         for name, info in program_data.items():
             img_raw = get_base64_img(info.get("bg_file", ""))
             bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
-            # 디자인 수정: 이미지 자체의 색감을 강조
             st.markdown(f'<div class="program-card" style="background-image: url(\'{bg_url}\');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white; background:rgba(0,0,0,0.3); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white;">{name}</div></div></div>', unsafe_allow_html=True)
             if st.button(f"{name} 상세보기", key=f"btn_{name}"):
                 navigate_to('detail', name)
+
+        # [담당자 연락처 섹션]
+        st.markdown(f"""
+        <div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;">
+            <div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div>
+            <div style="font-size:15px; color:#1C1C1E; line-height:1.6;">
+                인재육성팀 <b>김선화 팀장</b><br>
+                <a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # [2] CHEER VIDEO VIEW
     elif st.session_state.view == 'cheer_video':
@@ -200,7 +220,7 @@ with app_canvas:
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [3] CHEER FEED VIEW (게시판)
+    # [3] CHEER FEED VIEW
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
@@ -220,47 +240,23 @@ with app_canvas:
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [4] UPLOAD VIEW (안내 및 예시 추가)
+    # [4] UPLOAD VIEW
     elif st.session_state.view == 'upload':
-        # 야구공 그래픽 삽입
-        st.markdown("""
-        <div style="text-align: center; margin-bottom: 10px;">
-            <svg width="60" height="60" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" fill="white" stroke="#E5E5EA" stroke-width="2"/>
-                <path d="M20 30 Q50 50 20 70" fill="none" stroke="#FF3B30" stroke-width="3"/>
-                <path d="M80 30 Q50 50 80 70" fill="none" stroke="#FF3B30" stroke-width="3"/>
-                <text x="50" y="55" font-size="12" font-weight="900" text-anchor="middle" fill="#FF3B30" font-family="Pretendard">LG TWINS</text>
-            </svg>
-        </div>
-        """, unsafe_allow_html=True)
-        
+        st.markdown("""<div style="text-align: center; margin-bottom: 10px;"><svg width="60" height="60" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#E5E5EA" stroke-width="2"/><path d="M20 30 Q50 50 20 70" fill="none" stroke="#FF3B30" stroke-width="3"/><path d="M80 30 Q50 50 80 70" fill="none" stroke="#FF3B30" stroke-width="3"/><text x="50" y="55" font-size="12" font-weight="900" text-anchor="middle" fill="#FF3B30" font-family="Pretendard">LG TWINS</text></svg></div>""", unsafe_allow_html=True)
         st.markdown('<h2 style="font-weight:900; text-align:center; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-        
-        # [수정] 작성 예시 및 이벤트 안내 박스
-        st.markdown(f"""
-        <div class="example-box">
-            <div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:8px;">🎁 참여 이벤트 안내</div>
-            <div style="font-size:14px; color:#3A3A3C; line-height:1.6;">
-                현장 분위기를 잘 표현한 사진이나 뜨거운 소감을 남겨주세요!<br>
-                <b>(작성 예시: CEO와 셀카, 열정적인 응원 장면, LG 득점 순간, 동료와의 인증샷 등)</b><br><br>
-                <span style="color:#FF3B30;">✨ 참여해주신 분들께는 추첨을 통해 소정의 상품을 드립니다!</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="example-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:8px;">🎁 참여 이벤트 안내</div><div style="font-size:14px; color:#3A3A3C; line-height:1.6;">현장 분위기를 잘 표현한 사진이나 뜨거운 소감을 남겨주세요!<br><b>(예시: CEO와 셀카, 응원 장면, LG 득점 순간, 인증샷 등)</b><br><br><span style="color:#FF3B30;">✨ 참여해주신 분들께는 추첨을 통해 소정의 상품을 드립니다!</span></div></div>""", unsafe_allow_html=True)
         
         with st.container():
             c_name = st.text_input("닉네임 또는 조 (예: 5조 홍길동)")
             c_text = st.text_area("현장 소감 및 응원 메시지")
             c_file = st.file_uploader("현장 사진 업로드", type=['jpg', 'jpeg', 'png'])
-            
             if st.button("✅ 게시판에 등록하기"):
                 if c_name and c_text and db:
-                    with st.spinner("이미지 최적화 중..."):
+                    with st.spinner("최적화 중..."):
                         img_b64 = compress_image(c_file) if c_file else ""
                         db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
                         navigate_to('cheer')
-                else: st.warning("이름과 메시지를 모두 입력해주세요.")
-            
+                else: st.warning("정보를 모두 입력해주세요.")
             st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
             if st.button("❌ 취소"): navigate_to('cheer')
             st.markdown('</div>', unsafe_allow_html=True)
@@ -272,21 +268,7 @@ with app_canvas:
         img_raw = get_base64_img(item.get("bg_file", ""))
         bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
-        
-        st.markdown(f"""
-        <div style="background: url('{bg_url}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
-            <div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                <div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div>
-                <div style="font-size: 26px; font-weight: 900;">{name}</div>
-            </div>
-        </div>
-        <div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;">
-            <h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3>
-            <p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p>
-            <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">
-            {points_html}
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="background: url('{bg_url}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;"><div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div><div style="font-size: 26px; font-weight: 900;">{name}</div></div></div><div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;"><h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3><p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p><hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">{points_html}</div>""", unsafe_allow_html=True)
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
