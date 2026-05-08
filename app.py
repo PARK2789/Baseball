@@ -12,13 +12,13 @@ import unicodedata
 from datetime import datetime
 from google.cloud import firestore
 from google.oauth2 import service_account
-from PIL import Image
+from PIL import Image, ImageOps # ImageOps 추가 (회전 방지용)
 import io
 
 # 1. 페이지 설정 및 초기화
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
-# 세션 상태 초기화 (최상단 배치)
+# 세션 상태 초기화
 if 'view' not in st.session_state:
     st.session_state.view = 'home'
 if 'prev_view' not in st.session_state:
@@ -52,6 +52,7 @@ def force_scroll_top():
         scrollTopNow();
         setTimeout(scrollTopNow, 30);
         setTimeout(scrollTopNow, 100);
+        setTimeout(scrollTopNow, 300);
         </script>
         """,
         height=0,
@@ -63,7 +64,7 @@ def navigate_to(view, target=None):
     st.session_state.target = target
     st.rerun()
 
-# 4. 데이터 및 이미지 로드 (캐싱 적용)
+# 4. 데이터 및 이미지 처리
 @st.cache_resource
 def get_db():
     try:
@@ -80,11 +81,19 @@ def get_base64_img(file_path):
     return ""
 
 def compress_image(uploaded_file):
+    """사진 회전 방지 로직 및 압축 포함"""
     img = Image.open(uploaded_file)
+    
+    # [핵심] EXIF 정보를 기반으로 사진을 올바른 방향으로 회전시킴
+    img = ImageOps.exif_transpose(img)
+    
     if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-    img.thumbnail((800, 800))
+    
+    # 긴 축 기준 800px로 리사이징
+    img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+    
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG', quality=70)
+    img.save(img_byte_arr, format='JPEG', quality=75)
     return base64.b64encode(img_byte_arr.getvalue()).decode()
 
 db = get_db()
@@ -94,13 +103,12 @@ COLLECTION_PATH = f"artifacts/{app_id}/public/data/cheers"
 if os.path.exists("programs.json"):
     with open("programs.json", "r", encoding="utf-8") as f:
         program_data = json.load(f)
-else:
-    program_data = {}
+else: program_data = {}
 
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. 디자인 시스템 (CSS)
+# 5. 프리미엄 CSS
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -114,7 +122,7 @@ st.markdown(f"""
         color: white; margin: -6rem -1rem 1rem -1rem;
     }}
     .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; }}
-    .info-box {{ background-color: #F2F2F7; padding: 14px 18px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 10px; }}
+    .info-box {{ background-color: #F2F2F7; padding: 16px 20px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
     
     .program-card {{
         position: relative; height: 160px; border-radius: 22px; margin-bottom: 4px; 
@@ -125,30 +133,33 @@ st.markdown(f"""
     
     .stButton>button {{ 
         width: 100%; border-radius: 16px; background-color: #003087;
-        color: white; font-weight: 700; height: 3.5em; font-size: 15px; margin-bottom: 10px; 
+        color: white; font-weight: 700; height: 3.5em; font-size: 15px; margin-bottom: 12px; 
+        box-shadow: 0 4px 12px rgba(0,48,135,0.15);
     }}
-    .secondary-btn button {{ background-color: #F2F2F7 !important; color: #1C1C1E !important; }}
-    .cheer-card {{ background-color: white; border-radius: 20px; padding: 15px; border: 1px solid #E5E5EA; margin-bottom: 15px; }}
-    .cheer-img {{ width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; max-height: 400px; }}
+    
+    /* 하단 버튼 컨테이너 - 여백 확보 */
+    .nav-btn-container {{ margin-top: 40px !important; padding-top: 10px; }}
+
+    .cheer-card {{ background-color: white; border-radius: 20px; padding: 18px; border: 1px solid #E5E5EA; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }}
+    .cheer-img {{ width: 100%; border-radius: 12px; margin-top: 10px; object-fit: cover; max-height: 500px; }}
 </style>
 """, unsafe_allow_html=True)
 
-# 관리자 설정
-with st.sidebar:
-    admin_password = st.text_input("관리자 암호", type="password")
-    is_admin = (admin_password == "1234")
+# 6. 화면 렌더링 (View 가드 및 스크롤 처리)
 
-# 6. 화면 렌더링 로직 (View 가드 적용)
-
-# 페이지 전환 감지 시 스크롤 최상단 강제 이동
 if st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.prev_view = st.session_state.view
 
-# 메인 렌더링 영역
-app_container = st.container()
+# 관리자 인증
+with st.sidebar:
+    admin_pw = st.text_input("Admin Password", type="password")
+    is_admin = (admin_pw == "1234")
 
-with app_container:
+# 메인 캔버스
+app_canvas = st.container()
+
+with app_canvas:
     # [HOME VIEW]
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 8px;">함께 소통하고 함께 응원합니다!</div></div>', unsafe_allow_html=True)
@@ -182,56 +193,70 @@ with app_container:
             docs = db.collection(COLLECTION_PATH).stream()
             posts = [doc.to_dict() | {"id": doc.id} for doc in docs]
             posts.sort(key=lambda x: x.get('timestamp', datetime.min), reverse=True)
-            for post in posts[:40]:
+            for post in posts[:50]:
                 img_html = f'<img src="data:image/jpeg;base64,{post["image"]}" class="cheer-img">' if post.get("image") else ""
                 st.markdown(f'<div class="cheer-card"><b>👤 {post["name"]}</b><br>{post["text"]}{img_html}</div>', unsafe_allow_html=True)
                 if is_admin:
                     if st.button(f"🗑️ 삭제", key=f"del_{post['id']}"):
                         db.collection(COLLECTION_PATH).document(post['id']).delete()
                         st.rerun()
-        if st.button("🏠 메인으로 돌아가기", key="back_home"):
+        
+        st.markdown('<div class="nav-btn-container">', unsafe_allow_html=True)
+        if st.button("🏠 메인으로 돌아가기"):
             navigate_to('home')
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # [UPLOAD VIEW - 입력창]
+    # [UPLOAD VIEW]
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
         with st.container():
-            c_name = st.text_input("닉네임 또는 조")
-            c_text = st.text_area("응원 메시지")
-            c_file = st.file_uploader("사진 선택", type=['jpg', 'jpeg', 'png'])
+            c_name = st.text_input("닉네임 또는 조", placeholder="예: LG이노텍 5조")
+            c_text = st.text_area("응원 메시지", placeholder="승리 가즈아!")
+            c_file = st.file_uploader("현장 사진 (정방향 자동 보정)", type=['jpg', 'jpeg', 'png'])
+            
             if st.button("✅ 게시하기"):
                 if c_name and c_text and db:
-                    img_b64 = compress_image(c_file) if c_file else ""
-                    db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
-                    navigate_to('cheer')
-            if st.button("❌ 취소", key="cancel_upload"):
+                    with st.spinner("이미지 최적화 및 업로드 중..."):
+                        img_b64 = compress_image(c_file) if c_file else ""
+                        db.collection(COLLECTION_PATH).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
+                        navigate_to('cheer')
+                else: st.warning("이름과 메시지를 모두 입력해주세요.")
+            
+            st.markdown('<div class="nav-btn-container">', unsafe_allow_html=True)
+            if st.button("❌ 취소"):
                 navigate_to('cheer')
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    # [DETAIL VIEW - 상세보기]
+    # [DETAIL VIEW]
     elif st.session_state.view == 'detail':
         name = st.session_state.target
         item = program_data.get(name, {})
         img_raw = get_base64_img(item.get("bg_file", ""))
         bg_url = f"data:image/jpeg;base64,{img_raw}" if img_raw else ""
-        points_html = "".join([f'<div style="margin-bottom:10px; font-size:15px;">• {p}</div>' for p in item.get("points", [])])
+        points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
         
         st.markdown(f"""
         <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.5)), url('{bg_url}'); 
                     background-size: cover; background-position: center; height: 180px; 
-                    border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 20px;">
+                    border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
             <div style="color: white;">
-                <div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div>
-                <div style="font-size: 26px; font-weight: 900;">{name}</div>
+                <div style="font-size: 11px; font-weight: 700; opacity: 0.8; letter-spacing: 1px;">{item.get('tag')}</div>
+                <div style="font-size: 26px; font-weight: 900; line-height: 1.1;">{name}</div>
             </div>
         </div>
-        <div style="background-color: #F8F9FA; padding: 25px; border-radius: 25px; border: 1px solid #E5E5EA;">
-            <h3 style="margin:0 0 12px 0; font-weight:800;">{item.get('detail_title')}</h3>
-            <p style="font-size: 16px; color: #3A3A3C; line-height: 1.6;">{item.get('desc')}</p>
-            <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 20px 0;">
+        <div style="background-color: #F8F9FA; padding: 28px; border-radius: 28px; border: 1px solid #E5E5EA;">
+            <h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E; font-size: 22px;">{item.get('detail_title')}</h3>
+            <p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p>
+            <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">
             {points_html}
         </div>
         """, unsafe_allow_html=True)
+        
+        # [수정] 버튼 간 여백 확보를 위해 컨테이너로 감쌈
+        st.markdown('<div class="nav-btn-container">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"):
             navigate_to('home')
+        st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:30px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+
