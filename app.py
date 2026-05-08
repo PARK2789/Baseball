@@ -165,7 +165,7 @@ with app_main:
         # [NEW] 응원가 및 경기 정보 섹션
         st.markdown("#### 🔥 응원 & 실시간 정보")
         with st.expander("⚾️ LG트윈스 응원가 배우기", expanded=False):
-            st.video("https://www.youtube.com/watch?v=BhwoJFkAf8")
+            st.video("https://www.youtube.com/watch?v=BhwoJFjkAf8")
             st.markdown('<p style="font-size:13px; color:#8E8E93; text-align:center;">미리 배우고 함께 목소리를 높여주세요!</p>', unsafe_allow_html=True)
         
         st.markdown(f"""
