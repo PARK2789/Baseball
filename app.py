@@ -13,10 +13,10 @@ from google.oauth2 import service_account
 from PIL import Image, ImageOps
 import io
 
-# 1. 페이지 설정 (최상단)
+# 1. 페이지 설정 (가장 먼저 실행)
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
-# --- [성식님 제안 로직: 강력한 상단 고정 스크립트 복구] ---
+# --- [성식님 제안: 강력한 상단 고정 스크립트] ---
 def force_scroll_top():
     components.html(
         """
@@ -26,48 +26,53 @@ def force_scroll_top():
             const targets = [
                 doc.querySelector('section[data-testid="stMain"]'),
                 doc.querySelector('div[data-testid="stAppViewContainer"]'),
+                doc.querySelector('div[data-testid="stVerticalBlock"]'),
                 doc.scrollingElement,
                 doc.documentElement,
                 doc.body
             ].filter(Boolean);
-            
+
             targets.forEach(el => {
                 try {
                     el.scrollTo({ top: 0, left: 0, behavior: "instant" });
                 } catch(e) {
-                    el.scrollTop = 0;
+                    try { el.scrollTop = 0; } catch(e2) {}
                 }
-                el.scrollTop = 0;
+                try { el.scrollTop = 0; } catch(e) {}
             });
-            try {
-                window.parent.scrollTo(0, 0);
-            } catch(e) {}
+
+            try { window.parent.scrollTo(0, 0); } catch(e) {}
         }
-        // 즉시 실행 및 렌더링 타이밍을 고려한 다단계 실행
+
+        // 스트림릿 렌더링 사이클을 이기기 위한 6단계 강제 실행
         scrollTopNow();
+        setTimeout(scrollTopNow, 0);
         setTimeout(scrollTopNow, 50);
         setTimeout(scrollTopNow, 150);
-        setTimeout(scrollTopNow, 300);
+        setTimeout(scrollTopNow, 350);
+        setTimeout(scrollTopNow, 700);
         </script>
         """,
         height=0,
     )
 
-# --- [데이터 처리 및 세션 관리] ---
+# --- [데이터 처리 및 상태 결정 (UI 렌더링 전)] ---
+
+# 세션 초기화
 if 'view' not in st.session_state: st.session_state.view = 'home'
 if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
-if 'target' not in st.session_state: st.session_state.target = None
 if 'modal_post' not in st.session_state: st.session_state.modal_post = None
 if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
-if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 
-# [플래시 방지] URL 파라미터 즉시 확인하여 뷰 고정
+# URL 파라미터 감지 (갤러리 클릭 시)
 query_params = st.query_params
-clicked_post_id = query_params.get("post_id")
-if clicked_post_id:
+clicked_id = query_params.get("post_id")
+
+# [플래시 방지] 클릭 시 즉시 뷰 상태를 고정하여 홈 화면 노출을 막음
+if clicked_id:
     st.session_state.view = 'cheer'
 
-# 내비게이션 함수 (스크롤 트리거 포함)
+# 내비게이션 함수
 def navigate_to(view, target=None):
     st.session_state.view = view
     st.session_state.target = target
@@ -75,6 +80,7 @@ def navigate_to(view, target=None):
     st.session_state.force_scroll = True
     st.rerun()
 
+# DB 및 이미지 함수 (캐싱 적용)
 @st.cache_resource
 def get_db():
     try:
@@ -109,20 +115,20 @@ if os.path.exists("programs.json"):
         program_data = json.load(f)
 else: program_data = {}
 
-# --- [UI 렌더링 제어 영역] ---
+# --- [UI 렌더링 로직 시작] ---
 
-# 화면 전환 시 성식님 제안 스크롤 로직 실행
+# 1. 화면 전환 시 스크롤 실행 (UI 요소 출력 전)
 if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.force_scroll = False
     st.session_state.prev_view = st.session_state.view
 
-# 3. 디자인 시스템 (CSS)
+# 2. 전역 스타일 및 디자인
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
-    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 3rem !important; max-width: 100% !important; }}
+    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
     
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{get_base64_img("stadium.jpg")}');
@@ -139,7 +145,7 @@ st.markdown(f"""
     }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
 
-    /* [해결] 버튼 간격 확보를 위한 클래스 */
+    /* [해결] 버튼 간격(Gap) 60px 확보 */
     .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
 
     .program-card {{
@@ -151,15 +157,15 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# 상세 보기 모달 다이얼로그
+# 3. 상세 보기 모달 (속도 최적화)
 @st.dialog("📸 응원 상세 보기")
 def show_post_modal(post):
     st.image(f"data:image/jpeg;base64,{post['image']}", use_container_width=True)
     st.markdown(f"### 👤 {post['name']}")
     st.write(post['text'])
     st.caption(f"작성 시간: {post.get('timestamp', datetime.now()).strftime('%H:%M')}")
-    if st.session_state.is_admin:
-        if st.button("🗑️ 관리자 삭제", key="modal_delete_final"):
+    if st.session_state.get("is_admin", False):
+        if st.button("🗑️ 관리자 삭제", key="final_del_btn"):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
             st.session_state.modal_post = None
             st.query_params.clear()
@@ -170,11 +176,11 @@ with st.sidebar:
     admin_pw = st.text_input("Admin", type="password")
     st.session_state.is_admin = (admin_pw == "1234")
 
-# --- [메인 UI 렌더링: 여기서부터 실제 화면 생성] ---
-app_canvas = st.container()
+# --- [메인 앱 본체: 이 안에서만 화면을 그려 플래시 현상 제거] ---
+main_view_container = st.container()
 
-with app_canvas:
-    # [1] HOME VIEW
+with main_view_container:
+    # [1] HOME
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
@@ -183,9 +189,9 @@ with app_canvas:
         if st.button("📸 승리의 응원벽 참여"): navigate_to('cheer')
         if st.button("📣 LG트윈스 응원가 배우기"): navigate_to('cheer_video')
         st.markdown("#### 🏟️ 실시간 경기 정보")
-        # [수정] 요청하신 최신 네이버 스포츠 응원 톡 링크
-        naver_cheer_url = "https://m.sports.naver.com/game/20260512SSLG02026/cheer"
-        st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_cheer_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
+        # [수정] 네이버 스포츠 실시간 응원 링크
+        naver_url = "https://m.sports.naver.com/game/20260512SSLG02026/cheer"
+        st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
         
         st.markdown('#### 🚩 관전 가이드')
         for name, info in program_data.items():
@@ -194,13 +200,13 @@ with app_canvas:
             if st.button(f"{name} 상세보기", key=f"btn_{name}"): navigate_to('detail', name)
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED VIEW (갤러리 고속 팝업)
+    # [2] CHEER FEED (바둑판 갤러리 및 예측 현황)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
-        c_b1, c_b2 = st.columns(2)
-        with c_b1: 
+        cb1, cb2 = st.columns(2)
+        with cb1: 
             if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
-        with c_b2: 
+        with cb2: 
             if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
 
         if db:
@@ -212,22 +218,22 @@ with app_canvas:
                     for ev in events[:5]:
                         st.markdown(f"• **{ev['name']}**: {ev['hr_player']}(홈런) / {ev['hit_player']}(안타)")
 
+            # 갤러리 데이터 로드
             st.markdown("---")
             cheer_docs = db.collection(CHEER_COLLECTION).stream()
             cheers = sorted([doc.to_dict() | {"id": doc.id} for doc in cheer_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             cheers = [c for c in cheers if c.get("image")]
 
-            # [해결] 클릭 시 패스트 트랙으로 팝업 즉시 실행
-            if clicked_post_id:
-                target_post = next((c for c in cheers if c["id"] == clicked_post_id), None)
-                if target_post:
-                    show_post_modal(target_post)
+            # [해결] 클릭 시 패스트 트랙 팝업
+            if clicked_id:
+                target_p = next((c for c in cheers if c["id"] == clicked_id), None)
+                if target_p:
+                    show_post_modal(target_p)
                 st.query_params.clear()
 
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # 3열 바둑판 HTML/CSS 생성
                 gallery_html = "".join([f'<a class="gallery-item" href="?post_id={p["id"]}" target="_top"><img src="data:image/jpeg;base64,{p["image"]}"><div class="name-tag">{p.get("name","")}</div></a>' for p in cheers[:60]])
                 rows = (len(cheers[:60]) + 2) // 3
                 components.html(
