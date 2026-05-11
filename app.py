@@ -16,23 +16,15 @@ import io
 # 1. 페이지 설정 (가장 먼저 실행)
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
-# --- [수정: 화면 전환 시 최상단 고정 스크립트] ---
+# --- [성식님 제안: 강력한 상단 고정 스크립트 - app_scroll_top_fixed.txt 방식] ---
 def force_scroll_top():
-    """
-    Streamlit은 화면 전환/재실행 시 브라우저 스크롤 위치를 유지하는 경우가 있어,
-    전환 직후와 렌더링 완료 직후 모두 최상단 이동을 강제로 실행합니다.
-    """
     scroll_seq = st.session_state.get("scroll_seq", 0)
-
     components.html(
         f"""
         <script>
         (function() {{
-            const token = "{scroll_seq}";
-
             function scrollTopNow() {{
                 const doc = window.parent.document;
-
                 const selectors = [
                     'section[data-testid="stMain"]',
                     'div[data-testid="stAppViewContainer"]',
@@ -41,42 +33,29 @@ def force_scroll_top():
                     '.main',
                     '.stApp'
                 ];
-
-                const targets = selectors
-                    .map(selector => doc.querySelector(selector))
-                    .filter(Boolean);
-
+                const targets = selectors.map(s => doc.querySelector(s)).filter(Boolean);
                 targets.push(doc.scrollingElement, doc.documentElement, doc.body, window.parent);
-
                 targets.forEach(el => {{
                     try {{
-                        if (el === window.parent) {{
-                            el.scrollTo(0, 0);
-                        }} else {{
-                            el.scrollTop = 0;
-                            el.scrollLeft = 0;
-                            if (typeof el.scrollTo === "function") {{
-                                el.scrollTo({{ top: 0, left: 0, behavior: "instant" }});
-                            }}
+                        if (el === window.parent) {{ el.scrollTo(0, 0); }} 
+                        else {{ 
+                            el.scrollTop = 0; el.scrollLeft = 0;
+                            if (typeof el.scrollTo === "function") {{ el.scrollTo({{ top: 0, left: 0, behavior: "instant" }}); }}
                         }}
                     }} catch(e) {{}}
                 }});
             }}
-
             function runScrollBurst() {{
                 scrollTopNow();
                 requestAnimationFrame(scrollTopNow);
                 setTimeout(scrollTopNow, 0);
-                setTimeout(scrollTopNow, 80);
-                setTimeout(scrollTopNow, 180);
-                setTimeout(scrollTopNow, 350);
+                setTimeout(scrollTopNow, 50);
+                setTimeout(scrollTopNow, 150);
+                setTimeout(scrollTopNow, 300);
                 setTimeout(scrollTopNow, 700);
                 setTimeout(scrollTopNow, 1200);
             }}
-
             runScrollBurst();
-
-            // 이미지/비디오/폰트 로딩 후 레이아웃이 밀리는 경우까지 보정
             window.parent.addEventListener("load", runScrollBurst, {{ once: true }});
         }})();
         </script>
@@ -84,35 +63,7 @@ def force_scroll_top():
         height=0,
     )
 
-# --- [데이터 처리 및 상태 결정 (UI 렌더링 전)] ---
-
-# 세션 초기화
-if 'view' not in st.session_state: st.session_state.view = 'home'
-if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
-if 'target' not in st.session_state: st.session_state.target = None
-if 'modal_post' not in st.session_state: st.session_state.modal_post = None
-if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
-if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
-
-# URL 파라미터 감지 (갤러리 클릭 시)
-query_params = st.query_params
-clicked_id = query_params.get("post_id")
-
-# [플래시 방지] 클릭 시 즉시 뷰 상태를 고정하여 홈 화면 노출을 막음
-if clicked_id:
-    st.session_state.view = 'cheer'
-
-# 내비게이션 함수
-def navigate_to(view, target=None):
-    # 모든 화면 전환 시 다음 렌더링에서 최상단으로 이동
-    st.session_state.view = view
-    st.session_state.target = target
-    st.session_state.modal_post = None
-    st.session_state.force_scroll = True
-    st.session_state.scroll_seq += 1
-    st.rerun()
-
-# DB 및 이미지 함수 (캐싱 적용)
+# --- [데이터 로드 및 세션 상태 관리] ---
 @st.cache_resource
 def get_db():
     try:
@@ -142,55 +93,34 @@ app_id = "ceo-talk-victory-2026"
 CHEER_COLLECTION = f"artifacts/{app_id}/public/data/cheers"
 EVENT_COLLECTION = f"artifacts/{app_id}/public/data/events"
 
+# programs.json 로드 (이미지 파일명 참조)
 if os.path.exists("programs.json"):
     with open("programs.json", "r", encoding="utf-8") as f:
         program_data = json.load(f)
 else: program_data = {}
 
-# --- [UI 렌더링 로직 시작] ---
+# 세션 초기화
+if 'view' not in st.session_state: st.session_state.view = 'home'
+if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
+if 'modal_post' not in st.session_state: st.session_state.modal_post = None
+if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
+if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
 
-# 1. 화면 전환 시 스크롤 실행
-#    - 렌더링 전 1차 실행
-#    - 화면을 모두 그린 뒤 하단에서 2차 실행
-need_scroll_top = st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view
-if need_scroll_top:
-    force_scroll_top()
+# [플래시 방지] URL 파라미터 감지 시 즉시 상태 고정
+query_params = st.query_params
+clicked_pid = query_params.get("post_id")
+if clicked_pid:
+    st.session_state.view = 'cheer'
 
-# 2. 전역 스타일 및 디자인
-st.markdown(f"""
-<style>
-    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
-    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
-    
-    .hero-section {{
-        background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{get_base64_img("stadium.jpg")}');
-        background-size: cover; background-position: center;
-        padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
-        color: white; margin: -6.5rem -1rem 1.5rem -1rem;
-    }}
-    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
-    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
-    
-    .stButton>button {{ 
-        width: 100%; border-radius: 16px; background-color: #3A3A3C;
-        color: white; font-weight: 600; height: 3.6em; font-size: 15px; margin-bottom: 12px; border: none;
-    }}
-    .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
+def navigate_to(view, target=None):
+    st.session_state.view = view
+    st.session_state.target = target
+    st.session_state.modal_post = None
+    st.session_state.force_scroll = True
+    st.session_state.scroll_seq += 1
+    st.rerun()
 
-    /* [해결] 버튼 간격(Gap) 60px 확보 */
-    .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
-
-    .program-card {{
-        position: relative; height: 180px; border-radius: 24px; margin-bottom: 10px; 
-        overflow: hidden; background-size: cover; background-position: center; 
-        display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; border: 1px solid #E5E5EA;
-    }}
-    .example-box {{ background-color: #FFF9F9; border: 1px dashed #FF3B30; padding: 15px; border-radius: 15px; margin-bottom: 20px; }}
-</style>
-""", unsafe_allow_html=True)
-
-# 3. 상세 보기 모달 (속도 최적화)
+# 팝업 모달 함수
 @st.dialog("📸 응원 상세 보기")
 def show_post_modal(post):
     st.image(f"data:image/jpeg;base64,{post['image']}", use_container_width=True)
@@ -204,46 +134,95 @@ def show_post_modal(post):
             st.query_params.clear()
             st.rerun()
 
-# 관리자 인증
+# --- [UI 렌더링 영역] ---
+
+# 화면 전환 시 스크롤 실행
+if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
+    force_scroll_top()
+    st.session_state.force_scroll = False
+    st.session_state.prev_view = st.session_state.view
+
+# 디자인 시스템 (CSS)
+# [수정] 메인 배너 이미지(hero)를 programs.json 혹은 cheer.jpg에서 동적으로 로드
+hero_img_path = "cheer.jpg" if os.path.exists("cheer.jpg") else "stadium.jpg"
+hero_b64 = get_base64_img(hero_img_path)
+
+st.markdown(f"""
+<style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
+    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
+    
+    .hero-section {{
+        background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{hero_b64}');
+        background-size: cover; background-position: center;
+        padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
+        color: white; margin: -6.5rem -1rem 1.5rem -1rem;
+    }}
+    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
+    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
+    
+    .stButton>button {{ 
+        width: 100%; border-radius: 16px; background-color: #3A3A3C;
+        color: white; font-weight: 600; height: 3.6em; font-size: 15px; margin-bottom: 12px; border: none;
+    }}
+    .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
+
+    /* 하단 버튼 간격(Gap) 60px 확보 */
+    .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
+
+    .program-card {{
+        position: relative; height: 180px; border-radius: 24px; margin-bottom: 10px; 
+        overflow: hidden; background-size: cover; background-position: center; 
+        display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; border: 1px solid #E5E5EA;
+    }}
+    .card-content {{ position: relative; z-index: 2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); }}
+    .example-box {{ background-color: #FFF9F9; border: 1px dashed #FF3B30; padding: 15px; border-radius: 15px; margin-bottom: 20px; }}
+</style>
+""", unsafe_allow_html=True)
+
 with st.sidebar:
     admin_pw = st.text_input("Admin", type="password")
     st.session_state.is_admin = (admin_pw == "1234")
 
-# --- [메인 앱 본체: 이 안에서만 화면을 그려 플래시 현상 제거] ---
-main_view_container = st.container()
+# 메인 렌더링 컨테이너
+app_canvas = st.container()
 
-with main_view_container:
-    # [1] HOME
+with app_canvas:
+    # [1] HOME VIEW
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
+        
         st.markdown("#### 💬 현장 소통 & 응원")
         if st.button("📸 승리의 응원벽 참여"): navigate_to('cheer')
         if st.button("📣 LG트윈스 응원가 배우기"): navigate_to('cheer_video')
+        
         st.markdown("#### 🏟️ 실시간 경기 정보")
-        # [수정] 네이버 스포츠 실시간 응원 링크
-        naver_url = "https://m.sports.naver.com/game/20260512SSLG02026/cheer"
-        st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
+        naver_link = "https://m.sports.naver.com/game/20260512SSLG02026/cheer"
+        st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_link}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
         
         st.markdown('#### 🚩 관전 가이드')
         for name, info in program_data.items():
-            bg_b64 = get_base64_img(info.get("bg_file", ""))
-            st.markdown(f'<div class="program-card" style="background-image: url(\'data:image/jpeg;base64,{bg_b64}\');"><div style="position:relative; z-index:2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5);"><div style="font-size:11px; font-weight:800; color:white; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white;">{name}</div></div></div>', unsafe_allow_html=True)
+            # [수정] programs.json에서 지정한 파일명을 실시간으로 로드
+            card_bg_b64 = get_base64_img(info.get("bg_file", ""))
+            st.markdown(f'<div class="program-card" style="background-image: url(\'data:image/jpeg;base64,{card_bg_b64}\');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white;">{name}</div></div></div>', unsafe_allow_html=True)
             if st.button(f"{name} 상세보기", key=f"btn_{name}"): navigate_to('detail', name)
+        
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED (바둑판 갤러리 및 예측 현황)
+    # [2] CHEER FEED VIEW
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
-        cb1, cb2 = st.columns(2)
-        with cb1: 
+        c1, c2 = st.columns(2)
+        with c1: 
             if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
-        with cb2: 
+        with c2: 
             if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
 
         if db:
-            # 예측 현황 복구
+            # 예측 현황 배너
             ev_docs = db.collection(EVENT_COLLECTION).stream()
             events = sorted([doc.to_dict() | {"id": doc.id} for doc in ev_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             if events:
@@ -251,17 +230,17 @@ with main_view_container:
                     for ev in events[:5]:
                         st.markdown(f"• **{ev['name']}**: {ev['hr_player']}(홈런) / {ev['hit_player']}(안타)")
 
-            # 갤러리 데이터 로드
+            # 갤러리 로딩 및 클릭 감지
             st.markdown("---")
             cheer_docs = db.collection(CHEER_COLLECTION).stream()
             cheers = sorted([doc.to_dict() | {"id": doc.id} for doc in cheer_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             cheers = [c for c in cheers if c.get("image")]
 
-            # [해결] 클릭 시 패스트 트랙 팝업
-            if clicked_id:
-                target_p = next((c for c in cheers if c["id"] == clicked_id), None)
-                if target_p:
-                    show_post_modal(target_p)
+            # [해결] 클릭 시 패스트 트랙으로 팝업 즉시 실행
+            if clicked_pid:
+                target_post = next((c for c in cheers if c["id"] == clicked_pid), None)
+                if target_post:
+                    show_post_modal(target_post)
                 st.query_params.clear()
 
             if not cheers:
@@ -288,7 +267,7 @@ with main_view_container:
 
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-        st.markdown(f"""<div class="example-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:8px;">🎁 참여 이벤트 안내</div><div style="font-size:14px; color:#3A3A3C; line-height:1.6;">현장 분위기를 잘 표현한 사진이나 소감을 남겨주세요!<br><b>(예시: CEO와 셀카, 응원 장면, 인증샷 등)</b></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="example-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:8px;">🎁 참여 이벤트 안내</div><div style="font-size:14px; color:#3A3A3C; line-height:1.6;">현장 분위기를 잘 표현한 사진이나 소감을 남겨주세요!<br><b>(예시: CEO와 셀카, 응원 장면, LG 득점 순간 등)</b></div></div>""", unsafe_allow_html=True)
         c_name = st.text_input("닉네임 또는 조")
         c_text = st.text_area("현장 소감")
         c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
@@ -313,11 +292,12 @@ with main_view_container:
     elif st.session_state.view == 'detail':
         name = st.session_state.target
         item = program_data.get(name, {})
-        img_raw = get_base64_img(item.get("bg_file", ""))
+        # [해결] programs.json의 bg_file 값을 사용하여 실시간 이미지 반영
+        detail_bg_b64 = get_base64_img(item.get("bg_file", ""))
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
-        # [복구] 상단 이미지 헤더
+        
         st.markdown(f"""
-        <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{img_raw}'); 
+        <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg_b64}'); 
                     background-size: cover; background-position: center; height: 180px; 
                     border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
             <div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
@@ -336,10 +316,5 @@ with main_view_container:
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-# 화면 렌더링 후 2차 실행: 이미지/상세화면 로딩 이후 스크롤 위치 재보정
-if need_scroll_top:
-    force_scroll_top()
-    st.session_state.force_scroll = False
-    st.session_state.prev_view = st.session_state.view
-
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+
