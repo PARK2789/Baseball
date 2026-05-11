@@ -291,7 +291,7 @@ with main_app:
 
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-        c_name = st.text_input("닉네임 또는 조")
+        c_name = st.text_input("성명(반드시 실명으로 기재해주세요)")
         c_text = st.text_area("현장 소감")
         c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
         if st.button("✅ 게시하기"):
@@ -303,7 +303,7 @@ with main_app:
 
     elif st.session_state.view == 'event_upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">🎯 이벤트 참여</h2>', unsafe_allow_html=True)
-        e_name = st.text_input("닉네임 또는 조")
+        e_name = st.text_input("성명(반드시 실명으로 기재해주세요)")
         e_hr = st.text_input("⚾️ 첫 홈런 선수?")
         e_hit = st.text_input("⚾️ 첫 안타 선수?")
         if st.button("🚀 예측 제출"):
