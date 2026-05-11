@@ -18,10 +18,6 @@ st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="c
 
 # --- [성식님 제안 & GPT 수정: 최상단 고정 스크립트 완벽 유지] ---
 def force_scroll_top():
-    """
-    app_scroll_top_fixed.txt의 검증된 로직을 그대로 사용합니다.
-    화면 전환 시 브라우저 스크롤을 강력하게 초기화합니다.
-    """
     scroll_seq = st.session_state.get("scroll_seq", 0)
     components.html(
         f"""
@@ -68,7 +64,17 @@ def force_scroll_top():
         height=0,
     )
 
-# --- [데이터 처리 및 세션 관리] ---
+# --- [데이터 처리 및 세션 관리 (중요: UI 렌더링 전 완료)] ---
+
+# 세션 초기화
+if 'view' not in st.session_state: st.session_state.view = 'home'
+if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
+if 'is_admin' not in st.session_state: st.session_state.is_admin = False
+if 'edit_mode' not in st.session_state: st.session_state.edit_mode = False
+if 'active_modal_id' not in st.session_state: st.session_state.active_modal_id = None
+if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
+if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
+
 @st.cache_resource
 def get_db():
     try:
@@ -108,51 +114,51 @@ if os.path.exists("programs.json"):
             program_data = json.load(f)
     except: pass
 
-# 세션 초기화
-if 'view' not in st.session_state: st.session_state.view = 'home'
-if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
-if 'is_admin' not in st.session_state: st.session_state.is_admin = False
-if 'edit_mode' not in st.session_state: st.session_state.edit_mode = False
-if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
-if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
-
-# 관리자 로그인 (세션 고정)
+# [해결] 관리자 로그인 유지 및 세션 고정
 with st.sidebar:
     admin_pw = st.text_input("Admin Password", type="password")
     if admin_pw == "1234":
         st.session_state.is_admin = True
     elif admin_pw == "":
-        pass 
+        pass # 기존 인증 상태 유지
     else:
         st.session_state.is_admin = False
 
-# URL 파라미터 감지 (상세 보기 팝업용)
+# [해결] 사진 클릭 시 상세화면 즉시 전환 로직
+# URL 파라미터를 감지하면 즉시 세션으로 옮기고 화면을 새로고칩니다.
 query_params = st.query_params
-clicked_id = query_params.get("post_id")
+if "post_id" in query_params:
+    st.session_state.active_modal_id = query_params["post_id"]
+    st.session_state.view = 'cheer'
+    st.query_params.clear() # URL을 깨끗하게 하여 반복 실행 방지
+    st.rerun()
 
 def navigate_to(view, target=None):
     st.session_state.view = view
     st.session_state.target = target
+    st.session_state.active_modal_id = None
     st.session_state.force_scroll = True
     st.session_state.scroll_seq += 1
     st.rerun()
 
-# 상세 보기 모달
+# 상세보기 다이얼로그 (팝업 내 삭제 기능 포함)
 @st.dialog("📸 응원 상세 보기")
 def show_post_modal(post):
     st.image(f"data:image/jpeg;base64,{post['image']}", use_container_width=True)
     st.markdown(f"### 👤 {post['name']}")
     st.write(post['text'])
     st.caption(f"작성 시간: {post.get('timestamp', datetime.now()).strftime('%H:%M')}")
+    
     if st.session_state.is_admin:
-        if st.button("🗑️ 즉시 삭제", key=f"dlg_del_{post['id']}"):
+        st.markdown("---")
+        if st.button("🗑️ 관리자 삭제", key=f"dlg_del_{post['id']}"):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
-            st.query_params.clear()
+            st.session_state.active_modal_id = None
             st.rerun()
 
 # --- [UI 렌더링 영역] ---
 
-# 스크롤 실행
+# 화면 전환 감지 시 상단 고정 실행
 if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.force_scroll = False
@@ -185,9 +191,9 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-main_container = st.container()
+main_app = st.container()
 
-with main_container:
+with main_app:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
@@ -207,13 +213,13 @@ with main_container:
             if st.button(f"{name} 상세보기", key=f"btn_{name}"): navigate_to('detail', name)
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED VIEW (썸네일 즉시 삭제 기능 추가)
+    # [2] CHEER FEED VIEW (갤러리 및 상세보기 즉시 로드)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         
-        # 관리자 전용 편집 모드 컨트롤
+        # 관리자 전용 편집 모드
         if st.session_state.is_admin:
-            st.session_state.edit_mode = st.toggle("🛠 삭제 모드 활성화 (관리자 전용)", value=st.session_state.edit_mode)
+            st.session_state.edit_mode = st.toggle("🛠 관리자 삭제 모드 활성화", value=st.session_state.edit_mode)
 
         c1, c2 = st.columns(2)
         with c1: 
@@ -240,26 +246,30 @@ with main_container:
             cheers = sorted([doc.to_dict() | {"id": doc.id} for doc in cheer_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             cheers = [c for c in cheers if c.get("image")]
 
-            # 상세 팝업 처리 (URL 파라미터 기반)
-            if clicked_id:
-                target = next((c for c in cheers if c["id"] == clicked_id), None)
-                if target: show_post_modal(target)
+            # [해결] 상세보기 팝업 호출 (메인 안 거치고 즉시 실행)
+            active_id = st.session_state.get("active_modal_id")
+            if active_id:
+                target = next((c for c in cheers if c["id"] == active_id), None)
+                if target:
+                    show_post_modal(target)
+                else:
+                    st.session_state.active_modal_id = None # 데이터가 없으면 리셋
 
-            # [해결] 썸네일 화면에서 즉시 삭제 로직 (편집 모드)
+            # [해결] 갤러리 직접 삭제 (편집 모드)
             if st.session_state.edit_mode:
-                st.warning("⚠️ 사진 아래의 [❌ 삭제] 버튼을 누르면 즉시 삭제됩니다.")
-                for i in range(0, len(cheers), 3):
-                    cols = st.columns(3)
-                    for j in range(3):
+                st.warning("⚠️ 사진 아래의 삭제 버튼을 누르면 즉시 제거됩니다.")
+                for i in range(0, len(cheers), 2):
+                    cols = st.columns(2)
+                    for j in range(2):
                         if i + j < len(cheers):
                             p = cheers[i+j]
                             with cols[j]:
                                 st.image(f"data:image/jpeg;base64,{p['image']}", use_container_width=True)
-                                if st.button(f"❌ 삭제 ({p['name']})", key=f"direct_del_{p['id']}"):
+                                if st.button(f"❌ {p['name']}님 사진 삭제", key=f"edit_del_{p['id']}"):
                                     db.collection(CHEER_COLLECTION).document(p['id']).delete()
                                     st.rerun()
             else:
-                # 일반 모드: 미려한 3열 HTML 그리드 유지
+                # 일반 모드: 3열 HTML 그리드
                 gallery_items = "".join([f'<a class="gallery-item" href="?post_id={p["id"]}" target="_top"><img src="data:image/jpeg;base64,{p["image"]}"><div class="name-tag">{p.get("name","")}</div></a>' for p in cheers[:60]])
                 rows = (len(cheers[:60]) + 2) // 3
                 components.html(
