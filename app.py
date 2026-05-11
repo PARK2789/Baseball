@@ -16,41 +16,69 @@ import io
 # 1. 페이지 설정 (가장 먼저 실행)
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
-# --- [성식님 제안: 강력한 상단 고정 스크립트] ---
+# --- [수정: 화면 전환 시 최상단 고정 스크립트] ---
 def force_scroll_top():
+    """
+    Streamlit은 화면 전환/재실행 시 브라우저 스크롤 위치를 유지하는 경우가 있어,
+    전환 직후와 렌더링 완료 직후 모두 최상단 이동을 강제로 실행합니다.
+    """
+    scroll_seq = st.session_state.get("scroll_seq", 0)
+
     components.html(
-        """
+        f"""
         <script>
-        function scrollTopNow() {
-            const doc = window.parent.document;
-            const targets = [
-                doc.querySelector('section[data-testid="stMain"]'),
-                doc.querySelector('div[data-testid="stAppViewContainer"]'),
-                doc.querySelector('div[data-testid="stVerticalBlock"]'),
-                doc.scrollingElement,
-                doc.documentElement,
-                doc.body
-            ].filter(Boolean);
+        (function() {{
+            const token = "{scroll_seq}";
 
-            targets.forEach(el => {
-                try {
-                    el.scrollTo({ top: 0, left: 0, behavior: "instant" });
-                } catch(e) {
-                    try { el.scrollTop = 0; } catch(e2) {}
-                }
-                try { el.scrollTop = 0; } catch(e) {}
-            });
+            function scrollTopNow() {{
+                const doc = window.parent.document;
 
-            try { window.parent.scrollTo(0, 0); } catch(e) {}
-        }
+                const selectors = [
+                    'section[data-testid="stMain"]',
+                    'div[data-testid="stAppViewContainer"]',
+                    'div[data-testid="stAppViewBlockContainer"]',
+                    'div[data-testid="stVerticalBlock"]',
+                    '.main',
+                    '.stApp'
+                ];
 
-        // 스트림릿 렌더링 사이클을 이기기 위한 6단계 강제 실행
-        scrollTopNow();
-        setTimeout(scrollTopNow, 0);
-        setTimeout(scrollTopNow, 50);
-        setTimeout(scrollTopNow, 150);
-        setTimeout(scrollTopNow, 350);
-        setTimeout(scrollTopNow, 700);
+                const targets = selectors
+                    .map(selector => doc.querySelector(selector))
+                    .filter(Boolean);
+
+                targets.push(doc.scrollingElement, doc.documentElement, doc.body, window.parent);
+
+                targets.forEach(el => {{
+                    try {{
+                        if (el === window.parent) {{
+                            el.scrollTo(0, 0);
+                        }} else {{
+                            el.scrollTop = 0;
+                            el.scrollLeft = 0;
+                            if (typeof el.scrollTo === "function") {{
+                                el.scrollTo({{ top: 0, left: 0, behavior: "instant" }});
+                            }}
+                        }}
+                    }} catch(e) {{}}
+                }});
+            }}
+
+            function runScrollBurst() {{
+                scrollTopNow();
+                requestAnimationFrame(scrollTopNow);
+                setTimeout(scrollTopNow, 0);
+                setTimeout(scrollTopNow, 80);
+                setTimeout(scrollTopNow, 180);
+                setTimeout(scrollTopNow, 350);
+                setTimeout(scrollTopNow, 700);
+                setTimeout(scrollTopNow, 1200);
+            }}
+
+            runScrollBurst();
+
+            // 이미지/비디오/폰트 로딩 후 레이아웃이 밀리는 경우까지 보정
+            window.parent.addEventListener("load", runScrollBurst, {{ once: true }});
+        }})();
         </script>
         """,
         height=0,
@@ -61,8 +89,10 @@ def force_scroll_top():
 # 세션 초기화
 if 'view' not in st.session_state: st.session_state.view = 'home'
 if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
+if 'target' not in st.session_state: st.session_state.target = None
 if 'modal_post' not in st.session_state: st.session_state.modal_post = None
 if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
+if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
 
 # URL 파라미터 감지 (갤러리 클릭 시)
 query_params = st.query_params
@@ -74,10 +104,12 @@ if clicked_id:
 
 # 내비게이션 함수
 def navigate_to(view, target=None):
+    # 모든 화면 전환 시 다음 렌더링에서 최상단으로 이동
     st.session_state.view = view
     st.session_state.target = target
     st.session_state.modal_post = None
     st.session_state.force_scroll = True
+    st.session_state.scroll_seq += 1
     st.rerun()
 
 # DB 및 이미지 함수 (캐싱 적용)
@@ -117,11 +149,12 @@ else: program_data = {}
 
 # --- [UI 렌더링 로직 시작] ---
 
-# 1. 화면 전환 시 스크롤 실행 (UI 요소 출력 전)
-if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
+# 1. 화면 전환 시 스크롤 실행
+#    - 렌더링 전 1차 실행
+#    - 화면을 모두 그린 뒤 하단에서 2차 실행
+need_scroll_top = st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view
+if need_scroll_top:
     force_scroll_top()
-    st.session_state.force_scroll = False
-    st.session_state.prev_view = st.session_state.view
 
 # 2. 전역 스타일 및 디자인
 st.markdown(f"""
@@ -303,5 +336,10 @@ with main_view_container:
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+# 화면 렌더링 후 2차 실행: 이미지/상세화면 로딩 이후 스크롤 위치 재보정
+if need_scroll_top:
+    force_scroll_top()
+    st.session_state.force_scroll = False
+    st.session_state.prev_view = st.session_state.view
 
+st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
