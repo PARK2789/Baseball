@@ -13,7 +13,7 @@ from google.oauth2 import service_account
 from PIL import Image, ImageOps
 import io
 
-# 1. 페이지 설정 (최상단)
+# 1. 페이지 설정 (가장 먼저 실행)
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
 # --- [GPT 제안: 강력한 상단 고정 스크립트 완벽 이식] ---
@@ -138,7 +138,8 @@ if st.session_state.force_scroll or st.session_state.prev_view != st.session_sta
     st.session_state.prev_view = st.session_state.view
 
 # 디자인 시스템 (CSS)
-hero_img_base = get_base64_img("cheer.jpg") or get_base64_img("stadium.jpg")
+# [수정] 메인 히어로 이미지는 stadium.jpg를 우선순위로 강제 적용
+hero_img_base = get_base64_img("stadium.jpg") or get_base64_img("cheer.jpg")
 
 st.markdown(f"""
 <style>
@@ -208,7 +209,7 @@ with app_main:
         
         st.markdown('#### 🚩 관전 가이드')
         for name, info in program_data.items():
-            # [복구] bg_file 경로를 읽어 실시간 이미지 로드
+            # bg_file 경로를 읽어 실시간 이미지 로드
             bg_b64 = get_base64_img(info.get("bg_file", ""))
             st.markdown(f"""
             <div class="program-card" style="background-image: url('data:image/jpeg;base64,{bg_b64}');">
@@ -299,7 +300,7 @@ with app_main:
     elif st.session_state.view == 'detail':
         name = st.session_state.target
         item = program_data.get(name, {})
-        # [복구] 상세보기 배경 이미지 실시간 로드
+        # 상세보기 배경 이미지 실시간 로드
         detail_bg = get_base64_img(item.get("bg_file", ""))
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
         
