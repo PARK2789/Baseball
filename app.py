@@ -24,6 +24,8 @@ if 'target' not in st.session_state:
     st.session_state.target = None
 if 'modal_post' not in st.session_state:
     st.session_state.modal_post = None
+if 'force_scroll' not in st.session_state:
+    st.session_state.force_scroll = False
 
 # 2. 강력한 스크롤 초기화 함수
 def force_scroll_top():
@@ -35,20 +37,30 @@ def force_scroll_top():
             const targets = [
                 doc.querySelector('section[data-testid="stMain"]'),
                 doc.querySelector('div[data-testid="stAppViewContainer"]'),
+                doc.querySelector('div[data-testid="stVerticalBlock"]'),
                 doc.scrollingElement,
                 doc.documentElement,
                 doc.body
             ].filter(Boolean);
+
             targets.forEach(el => {
-                try { el.scrollTo({ top: 0, left: 0, behavior: "instant" }); } catch(e) { el.scrollTop = 0; }
-                el.scrollTop = 0;
+                try {
+                    el.scrollTo({ top: 0, left: 0, behavior: "instant" });
+                } catch(e) {
+                    try { el.scrollTop = 0; } catch(e2) {}
+                }
+                try { el.scrollTop = 0; } catch(e) {}
             });
+
             try { window.parent.scrollTo(0, 0); } catch(e) {}
         }
+
         scrollTopNow();
+        setTimeout(scrollTopNow, 0);
         setTimeout(scrollTopNow, 30);
-        setTimeout(scrollTopNow, 150);
-        setTimeout(scrollTopNow, 450);
+        setTimeout(scrollTopNow, 100);
+        setTimeout(scrollTopNow, 250);
+        setTimeout(scrollTopNow, 600);
         </script>
         """,
         height=0,
@@ -58,6 +70,8 @@ def force_scroll_top():
 def navigate_to(view, target=None):
     st.session_state.view = view
     st.session_state.target = target
+    st.session_state.modal_post = None
+    st.session_state.force_scroll = True
     st.rerun()
 
 # 4. 데이터 및 이미지 처리
@@ -125,22 +139,6 @@ st.markdown(f"""
     }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
 
-    /* 갤러리 안내용 CSS - 실제 갤러리는 components.html에서 별도 렌더링 */
-    .gallery-img-container {{
-        width: 100%;
-        padding-top: 100%;
-        position: relative;
-        border-radius: 12px;
-        overflow: hidden;
-        background-color: #F2F2F7;
-    }}
-    .gallery-img-container img {{
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        object-fit: cover;
-    }}
-
     .program-card {{
         position: relative; height: 180px; border-radius: 24px; margin-bottom: 10px; 
         overflow: hidden; background-size: cover; background-position: center; 
@@ -150,6 +148,12 @@ st.markdown(f"""
     .example-box {{ background-color: #FFF9F9; border: 1px dashed #FF3B30; padding: 15px; border-radius: 15px; margin-bottom: 20px; }}
 </style>
 """, unsafe_allow_html=True)
+
+# 화면 전환 시 상단 고정
+if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
+    force_scroll_top()
+    st.session_state.force_scroll = False
+    st.session_state.prev_view = st.session_state.view
 
 # 6. 모달 다이얼로그 (사진 클릭 시 상세 보기)
 @st.dialog("📸 응원 상세 보기")
@@ -167,11 +171,6 @@ def show_post_modal(post):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
             st.session_state.modal_post = None
             st.rerun()
-
-# 7. 화면 렌더링 컨트롤러
-if st.session_state.prev_view != st.session_state.view:
-    force_scroll_top()
-    st.session_state.prev_view = st.session_state.view
 
 with st.sidebar:
     admin_pw = st.text_input("Admin", type="password")
@@ -241,20 +240,25 @@ with app_canvas:
             else:
                 # URL 파라미터로 전달된 post_id가 있으면 모달 대상 지정
                 selected_post_id = st.query_params.get("post_id")
+                if isinstance(selected_post_id, list):
+                    selected_post_id = selected_post_id[0] if selected_post_id else None
+
                 if selected_post_id:
                     selected_post = next((c for c in cheers if c["id"] == selected_post_id), None)
                     if selected_post:
                         st.session_state.modal_post = selected_post
+                    # 같은 사진이 계속 다시 열리지 않도록 URL 정리
                     st.query_params.clear()
 
                 # components.html 안에서 CSS Grid를 직접 그려 모바일에서도 3열 유지
+                # 클릭은 JS onclick 대신 <a target="_top"> 방식으로 처리
                 gallery_items = ""
                 for post in cheers:
                     gallery_items += f"""
-                    <div class="gallery-card" onclick="openPost('{post['id']}')">
+                    <a class="gallery-card" href="?post_id={post['id']}" target="_top">
                         <img src="data:image/jpeg;base64,{post['image']}" />
                         <div class="gallery-name">{post.get('name', '')}</div>
-                    </div>
+                    </a>
                     """
 
                 rows = (len(cheers) + 2) // 3
@@ -281,9 +285,10 @@ with app_canvas:
                             box-sizing: border-box;
                         }}
                         .gallery-card {{
+                            display: block;
+                            text-decoration: none;
                             cursor: pointer;
                             -webkit-tap-highlight-color: transparent;
-                            user-select: none;
                         }}
                         .gallery-card img {{
                             width: 100%;
@@ -309,14 +314,6 @@ with app_canvas:
                         <div class="gallery-grid">
                             {gallery_items}
                         </div>
-
-                        <script>
-                        function openPost(postId) {{
-                            const url = new URL(window.parent.location.href);
-                            url.searchParams.set("post_id", postId);
-                            window.parent.location.href = url.toString();
-                        }}
-                        </script>
                     </body>
                     </html>
                     """,
@@ -329,7 +326,6 @@ with app_canvas:
 
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"):
-            st.session_state.modal_post = None
             navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
