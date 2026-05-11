@@ -25,7 +25,7 @@ if 'target' not in st.session_state:
 if 'modal_post' not in st.session_state:
     st.session_state.modal_post = None
 
-# 2. 강력한 스크롤 초기화 함수 (제안해주신 방식 최적화)
+# 2. 강력한 스크롤 초기화 함수
 def force_scroll_top():
     components.html(
         """
@@ -67,7 +67,8 @@ def get_db():
         creds_dict = json.loads(st.secrets["textkey"])
         creds = service_account.Credentials.from_service_account_info(creds_dict)
         return firestore.Client(credentials=creds)
-    except: return None
+    except:
+        return None
 
 @st.cache_data
 def get_base64_img(file_path):
@@ -79,7 +80,8 @@ def get_base64_img(file_path):
 def compress_image(uploaded_file):
     img = Image.open(uploaded_file)
     img = ImageOps.exif_transpose(img) # 사진 회전 자동 보정
-    if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
     img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG', quality=80)
@@ -93,18 +95,19 @@ EVENT_COLLECTION = f"artifacts/{app_id}/public/data/events"
 if os.path.exists("programs.json"):
     with open("programs.json", "r", encoding="utf-8") as f:
         program_data = json.load(f)
-else: program_data = {}
+else:
+    program_data = {}
 
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. [핵심] 3x3 갤러리를 위한 강력한 CSS
+# 5. CSS
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
     .block-container {{ padding-top: 4.5rem !important; padding-bottom: 2.5rem !important; max-width: 100% !important; }}
-    
+
     /* 히어로 섹션 */
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('{hero_bg}');
@@ -114,7 +117,7 @@ st.markdown(f"""
     }}
     .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; }}
     .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
-    
+
     /* 일반 버튼 */
     .stButton>button {{ 
         width: 100%; border-radius: 16px; background-color: #3A3A3C;
@@ -122,30 +125,20 @@ st.markdown(f"""
     }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
 
-    /* [수정] 바둑판 갤러리: Streamlit columns 대신 HTML/CSS Grid로 3열 고정 */
-    .gallery-grid {{
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
-        margin-top: 20px;
-    }}
-
-    .gallery-item {{
-        display: block;
+    /* 갤러리 안내용 CSS - 실제 갤러리는 components.html에서 별도 렌더링 */
+    .gallery-img-container {{
         width: 100%;
-        aspect-ratio: 1 / 1;
+        padding-top: 100%;
+        position: relative;
         border-radius: 12px;
         overflow: hidden;
         background-color: #F2F2F7;
-        text-decoration: none;
-        -webkit-tap-highlight-color: transparent;
     }}
-
-    .gallery-item img {{
-        width: 100%;
-        height: 100%;
+    .gallery-img-container img {{
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         object-fit: cover;
-        display: block;
     }}
 
     .program-card {{
@@ -172,10 +165,10 @@ def show_post_modal(post):
     if is_admin:
         if st.button("🗑️ 관리자 삭제", key="modal_delete"):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
+            st.session_state.modal_post = None
             st.rerun()
 
 # 7. 화면 렌더링 컨트롤러
-
 if st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.prev_view = st.session_state.view
@@ -213,14 +206,16 @@ with app_canvas:
 
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED VIEW (바둑판 갤러리 해결 버전)
+    # [2] CHEER FEED VIEW
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
-            if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
+            if st.button("✨ 나도 응원 남기기"):
+                navigate_to('upload')
         with col_btn2:
-            if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
+            if st.button("🎯 이벤트 참여하기"):
+                navigate_to('event_upload')
 
         if db:
             # 1. 이벤트 요약 배너
@@ -231,40 +226,111 @@ with app_canvas:
                     for ev in events[-5:]:
                         st.markdown(f"• **{ev['name']}**: {ev['hr_player']}(홈런) / {ev['hit_player']}(안타)")
 
-            # 2. 바둑판 갤러리 (가장 중요한 부분)
+            # 2. 바둑판 갤러리
             st.markdown("---")
             cheer_docs = db.collection(CHEER_COLLECTION).stream()
-            cheers = sorted([doc.to_dict() | {"id": doc.id} for doc in cheer_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
+            cheers = sorted(
+                [doc.to_dict() | {"id": doc.id} for doc in cheer_docs],
+                key=lambda x: x.get('timestamp', datetime.min),
+                reverse=True
+            )
             cheers = [c for c in cheers if c.get("image")]
 
             if not cheers:
                 st.info("아직 사진이 없습니다. 첫 번째 응원의 주인공이 되어보세요!")
             else:
-                # [수정] st.columns와 투명 버튼을 제거하고, 이미지 자체를 클릭 대상으로 사용합니다.
-                # ?post=문서ID 쿼리 파라미터를 이용해 클릭된 사진을 찾아 모달로 보여줍니다.
-                selected_post_id = st.query_params.get("post")
+                # URL 파라미터로 전달된 post_id가 있으면 모달 대상 지정
+                selected_post_id = st.query_params.get("post_id")
                 if selected_post_id:
                     selected_post = next((c for c in cheers if c["id"] == selected_post_id), None)
                     if selected_post:
                         st.session_state.modal_post = selected_post
                     st.query_params.clear()
 
-                gallery_html = '<div class="gallery-grid">'
+                # components.html 안에서 CSS Grid를 직접 그려 모바일에서도 3열 유지
+                gallery_items = ""
                 for post in cheers:
-                    gallery_html += f'''
-                    <a class="gallery-item" href="?post={post['id']}" title="크게 보기">
-                        <img src="data:image/jpeg;base64,{post['image']}" alt="{post.get('name', '응원 사진')}">
-                    </a>
-                    '''
-                gallery_html += '</div>'
+                    gallery_items += f"""
+                    <div class="gallery-card" onclick="openPost('{post['id']}')">
+                        <img src="data:image/jpeg;base64,{post['image']}" />
+                        <div class="gallery-name">{post.get('name', '')}</div>
+                    </div>
+                    """
 
-                st.markdown(gallery_html, unsafe_allow_html=True)
+                rows = (len(cheers) + 2) // 3
+                iframe_height = max(150, rows * 142 + 20)
 
-        if st.session_state.modal_post:
-            show_post_modal(st.session_state.modal_post)
+                components.html(
+                    f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {{
+                            margin: 0;
+                            padding: 0;
+                            font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                            background: transparent;
+                        }}
+                        .gallery-grid {{
+                            display: grid;
+                            grid-template-columns: repeat(3, 1fr);
+                            gap: 8px;
+                            width: 100%;
+                            box-sizing: border-box;
+                        }}
+                        .gallery-card {{
+                            cursor: pointer;
+                            -webkit-tap-highlight-color: transparent;
+                            user-select: none;
+                        }}
+                        .gallery-card img {{
+                            width: 100%;
+                            aspect-ratio: 1 / 1;
+                            object-fit: cover;
+                            display: block;
+                            border-radius: 12px;
+                            background-color: #F2F2F7;
+                        }}
+                        .gallery-name {{
+                            text-align: center;
+                            font-size: 11px;
+                            color: #8E8E93;
+                            margin-top: 4px;
+                            height: 16px;
+                            overflow: hidden;
+                            white-space: nowrap;
+                            text-overflow: ellipsis;
+                        }}
+                    </style>
+                    </head>
+                    <body>
+                        <div class="gallery-grid">
+                            {gallery_items}
+                        </div>
+
+                        <script>
+                        function openPost(postId) {{
+                            const url = new URL(window.parent.location.href);
+                            url.searchParams.set("post_id", postId);
+                            window.parent.location.href = url.toString();
+                        }}
+                        </script>
+                    </body>
+                    </html>
+                    """,
+                    height=iframe_height,
+                    scrolling=False,
+                )
+
+                if st.session_state.modal_post:
+                    show_post_modal(st.session_state.modal_post)
 
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
+        if st.button("🏠 메인으로 돌아가기"):
+            st.session_state.modal_post = None
+            navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
     # [3] CHEER VIDEO VIEW
@@ -272,10 +338,11 @@ with app_canvas:
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📣 응원가 배우기</h2>', unsafe_allow_html=True)
         st.video("https://m.youtube.com/watch?v=BhwoJFjkAf8")
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
+        if st.button("🏠 메인으로 돌아가기"):
+            navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [4] UPLOAD VIEW (안내 강화)
+    # [4] UPLOAD VIEW
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; text-align:center; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
         st.markdown(f"""
@@ -296,11 +363,18 @@ with app_canvas:
                 if c_name and c_text and db:
                     with st.spinner("최적화 중..."):
                         img_b64 = compress_image(c_file) if c_file else ""
-                        db.collection(CHEER_COLLECTION).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
+                        db.collection(CHEER_COLLECTION).add({
+                            "name": c_name,
+                            "text": c_text,
+                            "image": img_b64,
+                            "timestamp": datetime.now()
+                        })
                         navigate_to('cheer')
-                else: st.warning("정보를 모두 입력해주세요.")
+                else:
+                    st.warning("정보를 모두 입력해주세요.")
             st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-            if st.button("❌ 취소"): navigate_to('cheer')
+            if st.button("❌ 취소"):
+                navigate_to('cheer')
             st.markdown('</div>', unsafe_allow_html=True)
 
     # [5] EVENT UPLOAD VIEW
@@ -313,10 +387,16 @@ with app_canvas:
             e_hit = st.text_input("⚾️ 오늘의 첫 안타 선수는?")
             if st.button("🚀 예측 완료! 게시하기"):
                 if e_name and e_hr and e_hit and db:
-                    db.collection(EVENT_COLLECTION).add({"name": e_name, "hr_player": e_hr, "hit_player": e_hit, "timestamp": datetime.now()})
+                    db.collection(EVENT_COLLECTION).add({
+                        "name": e_name,
+                        "hr_player": e_hr,
+                        "hit_player": e_hit,
+                        "timestamp": datetime.now()
+                    })
                     navigate_to('cheer')
             st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-            if st.button("❌ 취소"): navigate_to('cheer')
+            if st.button("❌ 취소"):
+                navigate_to('cheer')
             st.markdown('</div>', unsafe_allow_html=True)
 
     # [6] DETAIL VIEW
@@ -328,7 +408,8 @@ with app_canvas:
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
         st.markdown(f"""<div style="background: url('{bg_url}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;"><div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div><div style="font-size: 26px; font-weight: 900;">{name}</div></div></div><div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;"><h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3><p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p><hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">{points_html}</div>""", unsafe_allow_html=True)
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
+        if st.button("🏠 메인으로 돌아가기"):
+            navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
