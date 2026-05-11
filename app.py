@@ -26,30 +26,28 @@ def force_scroll_top():
             const targets = [
                 doc.querySelector('section[data-testid="stMain"]'),
                 doc.querySelector('div[data-testid="stAppViewContainer"]'),
-                doc.querySelector('div[data-testid="stVerticalBlock"]'),
                 doc.scrollingElement,
                 doc.documentElement,
                 doc.body
             ].filter(Boolean);
-
+            
             targets.forEach(el => {
                 try {
                     el.scrollTo({ top: 0, left: 0, behavior: "instant" });
                 } catch(e) {
-                    try { el.scrollTop = 0; } catch(e2) {}
+                    el.scrollTop = 0;
                 }
-                try { el.scrollTop = 0; } catch(e) {}
+                el.scrollTop = 0;
             });
-
-            try { window.parent.scrollTo(0, 0); } catch(e) {}
+            try {
+                window.parent.scrollTo(0, 0);
+            } catch(e) {}
         }
-
+        // 즉시 실행 및 렌더링 타이밍을 고려한 다단계 실행
         scrollTopNow();
-        setTimeout(scrollTopNow, 0);
-        setTimeout(scrollTopNow, 30);
-        setTimeout(scrollTopNow, 100);
-        setTimeout(scrollTopNow, 250);
-        setTimeout(scrollTopNow, 600);
+        setTimeout(scrollTopNow, 50);
+        setTimeout(scrollTopNow, 150);
+        setTimeout(scrollTopNow, 300);
         </script>
         """,
         height=0,
