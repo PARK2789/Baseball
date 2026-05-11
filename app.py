@@ -25,6 +25,8 @@ if 'prev_view' not in st.session_state:
     st.session_state.prev_view = 'home'
 if 'target' not in st.session_state:
     st.session_state.target = None
+if 'modal_post' not in st.session_state: # 모달에 띄울 게시물 정보
+    st.session_state.modal_post = None
 
 # 2. 강력한 스크롤 초기화 함수 (부모 DOM 제어)
 def force_scroll_top():
@@ -81,13 +83,14 @@ def get_base64_img(file_path):
     return ""
 
 def compress_image(uploaded_file):
-    """사진 회전 방지 및 압축"""
+    """사진 회전 방지 및 압축 (썸네일/상세용 고해상도 유지)"""
     img = Image.open(uploaded_file)
     img = ImageOps.exif_transpose(img) 
     if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-    img.thumbnail((800, 800), Image.Resampling.LANCZOS)
+    # 상세 보기에서 깨지지 않도록 해상도를 조금 높게 잡습니다 (예: 1200px)
+    img.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG', quality=75)
+    img.save(img_byte_arr, format='JPEG', quality=80)
     return base64.b64encode(img_byte_arr.getvalue()).decode()
 
 db = get_db()
@@ -103,7 +106,7 @@ else: program_data = {}
 img_stadium = get_base64_img("stadium.jpg") 
 hero_bg = f"data:image/jpeg;base64,{img_stadium}" if img_stadium else ""
 
-# 5. 프리미엄 CSS
+# 5. 프리미엄 CSS (갤러리 및 모달 스타일 추가)
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -128,10 +131,30 @@ st.markdown(f"""
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; box-shadow: none !important; }}
     .nav-btn-container {{ margin-top: 35px !important; }}
 
-    .cheer-card {{ background-color: white; border-radius: 22px; padding: 20px; border: 1px solid #F2F2F7; margin-bottom: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }}
-    .event-card {{ border-left: 5px solid #FF3B30 !important; background-color: #FFF9F9; }}
-    .cheer-img {{ width: 100%; border-radius: 15px; margin-top: 12px; object-fit: cover; max-height: 500px; }}
+    /* [신규] 갤러리 스타일 */
+    .gallery-item {{
+        position: relative; width: 100%; padding-bottom: 100%; /* 정사각형 비율 */
+        border-radius: 12px; overflow: hidden; margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer;
+        transition: transform 0.2s;
+    }}
+    .gallery-item:hover {{ transform: scale(1.02); }}
+    .gallery-img {{
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        object-fit: cover;
+    }}
     
+    /* [신규] 이벤트 배너 스타일 */
+    .event-banner {{
+        background-color: #FFF9F9; border-left: 5px solid #FF3B30;
+        padding: 15px; border-radius: 12px; margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }}
+    .event-item {{
+        background-color: white; padding: 10px 15px; border-radius: 10px;
+        border: 1px solid #F2F2F7; margin-bottom: 8px; font-size: 13px;
+    }}
+
     .program-card {{
         position: relative; height: 170px; border-radius: 24px; margin-bottom: 8px; 
         overflow: hidden; background-size: cover; background-position: center; 
@@ -152,6 +175,26 @@ if st.session_state.prev_view != st.session_state.view:
 with st.sidebar:
     admin_pw = st.text_input("Admin", type="password")
     is_admin = (admin_pw == "1234")
+
+# [신규] 상세 보기 모달 (Dialog) 함수
+@st.dialog("📸 응원 상세 보기")
+def show_post_modal(post):
+    st.markdown(f"""
+    <div style="text-align:center;">
+        <img src="data:image/jpeg;base64,{post['image']}" style="width:100%; border-radius:12px; max-height:60vh; object-fit:contain; margin-bottom:15px;">
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown(f"### 👤 {post['name']}")
+    st.write(post['text'])
+    st.caption(f"작성일시: {post.get('timestamp', datetime.now()).strftime('%Y-%m-%d %H:%M')}")
+
+    if is_admin:
+        st.markdown("---")
+        if st.button("🗑️ 관리자 삭제", key=f"modal_del_{post['id']}"):
+            db.collection(CHEER_COLLECTION).document(post['id']).delete()
+            st.toast("게시물이 삭제되었습니다.")
+            st.session_state.modal_post = None # 모달 닫기
+            st.rerun()
 
 app_canvas = st.container()
 
@@ -188,44 +231,73 @@ with app_canvas:
 
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED VIEW (게시판)
+    # [2] CHEER FEED VIEW (바둑판 갤러리 및 이벤트 배너)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
-        
-        # 버튼 2개 나란히 배치
         col1, col2 = st.columns(2)
         with col1:
             if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
         with col2:
             if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
 
-        st.markdown("---")
         if db:
-            # 응원과 이벤트를 모두 가져와서 통합 피드 구성
-            cheers = [doc.to_dict() | {"id": doc.id, "type": "cheer"} for doc in db.collection(CHEER_COLLECTION).stream()]
-            events = [doc.to_dict() | {"id": doc.id, "type": "event"} for doc in db.collection(EVENT_COLLECTION).stream()]
-            posts = sorted(cheers + events, key=lambda x: x.get('timestamp', datetime.min), reverse=True)
+            # 1. 이벤트 데이터 가져오기 및 상단 배너 표시
+            events = [doc.to_dict() | {"id": doc.id} for doc in db.collection(EVENT_COLLECTION).stream()]
+            events.sort(key=lambda x: x.get('timestamp', datetime.min), reverse=True)
+            
+            if events:
+                with st.expander(f"🎯 오늘의 주인공 예측 현황 ({len(events)}명 참여 중)", expanded=True):
+                    st.markdown('<div style="margin-bottom:10px; font-size:14px; color:#666;">최근 참여자들의 예측을 확인해보세요!</div>', unsafe_allow_html=True)
+                    # 최신 5개만 표시
+                    for event in events[:5]:
+                        st.markdown(f"""
+                        <div class="event-item">
+                            <span style="font-weight:700;">👤 {event['name']}</span>님의 예측 → 
+                            홈런: <span style="color:#FF3B30; font-weight:700;">{event['hr_player']}</span> / 
+                            안타: <span style="color:#007AFF; font-weight:700;">{event['hit_player']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        if is_admin:
+                            if st.button("삭제", key=f"del_evt_{event['id']}", help="관리자용"):
+                                db.collection(EVENT_COLLECTION).document(event['id']).delete()
+                                st.rerun()
 
-            for post in posts[:50]:
-                if post['type'] == 'cheer':
-                    img_html = f'<img src="data:image/jpeg;base64,{post["image"]}" class="cheer-img">' if post.get("image") else ""
-                    st.markdown(f'<div class="cheer-card"><b>👤 {post["name"]}</b><br>{post["text"]}{img_html}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div class="cheer-card event-card">
-                        <div style="font-weight:800; color:#FF3B30; font-size:13px; margin-bottom:5px;">🎯 오늘의 주인공 예측</div>
-                        <b>👤 {post['name']}</b>님의 선택<br>
-                        • 홈런 예상: <span style="font-weight:700; color:#1C1C1E;">{post['hr_player']}</span><br>
-                        • 안타 예상: <span style="font-weight:700; color:#1C1C1E;">{post['hit_player']}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                if is_admin:
-                    if st.button(f"🗑️ 삭제", key=f"del_{post['id']}"):
-                        coll = CHEER_COLLECTION if post['type'] == 'cheer' else EVENT_COLLECTION
-                        db.collection(coll).document(post['id']).delete()
-                        st.rerun()
-        
+            # 2. 사진 응원 데이터 가져오기
+            cheers = [doc.to_dict() | {"id": doc.id} for doc in db.collection(CHEER_COLLECTION).stream()]
+            cheers.sort(key=lambda x: x.get('timestamp', datetime.min), reverse=True)
+            cheers = [c for c in cheers if c.get("image")] # 이미지가 있는 것만 필터링
+
+            # 3. 바둑판 갤러리 구현 (3열)
+            st.markdown("---")
+            st.markdown('<h4 style="font-weight:800; margin-bottom:15px;">📸 현장 사진 모아보기</h4>', unsafe_allow_html=True)
+            
+            if not cheers:
+                st.info("아직 올라온 사진이 없습니다. 첫 번째 주인공이 되어보세요!")
+            else:
+                # 3개의 컬럼 생성
+                cols = st.columns(3)
+                for i, post in enumerate(cheers[:60]): # 최대 60개까지만 표시
+                    with cols[i % 3]: # 컬럼에 순차적으로 분배
+                        # 이미지를 클릭 가능한 버튼처럼 만듦 (실제로는 버튼 위에 이미지를 덮어씌우는 방식)
+                        if st.button(label="image_btn", key=f"img_{post['id']}", help="클릭하여 크게 보기", use_container_width=True):
+                            st.session_state.modal_post = post # 클릭한 게시물 정보 저장
+                            st.rerun() # 리렌더링하여 모달 띄움
+
+                        # 버튼 위에 실제 이미지를 CSS로 덮어씌움 (Hack)
+                        st.markdown(f"""
+                        <div class="gallery-item" style="pointer-events: none;">
+                            <img src="data:image/jpeg;base64,{post['image']}" class="gallery-img">
+                        </div>
+                        <div style="margin-top:-100%; height:100%;"></div> 
+                        """, unsafe_allow_html=True)
+                        
+                        # 닉네임 살짝 표시
+                        st.caption(f"👤 {post['name']}")
+
+        # 4. 모달 띄우기 (st.session_state.modal_post가 있을 때만)
+        if st.session_state.modal_post:
+            show_post_modal(st.session_state.modal_post)
+
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
@@ -240,6 +312,7 @@ with app_canvas:
 
     # [4] UPLOAD VIEW (사진 응원)
     elif st.session_state.view == 'upload':
+        st.markdown("""<div style="text-align: center; margin-bottom: 10px;"><svg width="60" height="60" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="#E5E5EA" stroke-width="2"/><path d="M20 30 Q50 50 20 70" fill="none" stroke="#FF3B30" stroke-width="3"/><path d="M80 30 Q50 50 80 70" fill="none" stroke="#FF3B30" stroke-width="3"/><text x="50" y="55" font-size="12" font-weight="900" text-anchor="middle" fill="#FF3B30" font-family="Pretendard">LG TWINS</text></svg></div>""", unsafe_allow_html=True)
         st.markdown('<h2 style="font-weight:900; text-align:center; margin-bottom:5px;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
         st.markdown(f"""<div class="example-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:8px;">🎁 참여 이벤트 안내</div><div style="font-size:14px; color:#3A3A3C; line-height:1.6;">현장 분위기를 잘 표현한 사진이나 소감을 남겨주세요!<br><b>(예시: CEO와 셀카, 응원 장면, LG 득점 순간 등)</b><br><br><span style="color:#FF3B30;">✨ 참여해주신 분들께는 추첨을 통해 소정의 상품을 드립니다!</span></div></div>""", unsafe_allow_html=True)
         with st.container():
