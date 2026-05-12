@@ -517,7 +517,7 @@ main_app_canvas = st.container()
 with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">5/12(화) CEO Talk⁺</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
         
@@ -540,7 +540,7 @@ with main_app_canvas:
     # [2] CHEER FEED VIEW (3열 바둑판 및 직접 삭제 모드)
     elif st.session_state.view == 'cheer':
         st.markdown('''<h2 style="font-weight:900; margin-bottom:5px;">📸 함께 응원하기</h2>
-        <p style="margin-top:0; color:#6B6B70; font-size:14px; line-height:1.5;">참여하신 분들께는 소정의 기념품을 지급할 예정입니다.</p>''', unsafe_allow_html=True)
+        <p style="margin-top:0; color:#6B6B70; font-size:14px; line-height:1.5;">참여하신 분들께는 소정의 기념품 지급 예정입니다.</p>''', unsafe_allow_html=True)
         
         if st.session_state.is_admin:
             st.session_state.edit_mode = st.toggle("🛠 관리자 삭제 모드 활성화", value=st.session_state.edit_mode)
