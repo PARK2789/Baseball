@@ -134,13 +134,13 @@ if os.path.exists("programs.json"):
             program_data = json.load(f)
     except: pass
 
-# [해결] 관리자 로그인 상태 유지 강화
+# 관리자 로그인 상태 유지
 with st.sidebar:
     admin_pw = st.text_input("Admin Password", type="password")
     if admin_pw == "1234":
         st.session_state.is_admin = True
     elif admin_pw == "":
-        pass # 공백일 때는 이전의 True/False 상태를 그대로 유지
+        pass 
     else:
         st.session_state.is_admin = False
 
@@ -206,10 +206,7 @@ def build_gallery_component_html(cheers):
         background: transparent;
         font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;
     }}
-    body.modal-open {{
-        overflow: hidden;
-        background: transparent;
-    }}
+    body.modal-open {{ overflow: hidden; background: transparent; }}
     .gallery-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -218,118 +215,31 @@ def build_gallery_component_html(cheers):
         padding: 2px 0 8px 0;
     }}
     .gallery-item {{
-        display: block;
-        width: 100%;
-        aspect-ratio: 1 / 1;
-        border: 0;
-        padding: 0;
-        margin: 0;
-        background: #F2F2F7;
-        border-radius: 12px;
-        overflow: hidden;
-        cursor: pointer;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        -webkit-tap-highlight-color: transparent;
+        display: block; width: 100%; aspect-ratio: 1 / 1; border: 0; padding: 0; margin: 0;
+        background: #F2F2F7; border-radius: 12px; overflow: hidden; cursor: pointer;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08); -webkit-tap-highlight-color: transparent;
     }}
-    .gallery-item img {{
-        width: 100%;
-        height: 100%;
-        display: block;
-        object-fit: cover;
-    }}
+    .gallery-item img {{ width: 100%; height: 100%; display: block; object-fit: cover; }}
     .modal {{
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 999999;
-        background: rgba(0,0,0,0.5);
-        padding: 14px;
-        align-items: flex-start;
-        justify-content: center;
-        pointer-events: none;
+        display: none; position: fixed; inset: 0; z-index: 999999; background: rgba(0,0,0,0.5);
+        padding: 14px; align-items: flex-start; justify-content: center; pointer-events: none;
     }}
     .modal.open {{ display: flex; }}
     .modal-card {{
-        position: relative;
-        width: min(100%, 520px);
-        max-height: calc(100vh - 28px);
-        background: #FFFFFF;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-        display: flex;
-        flex-direction: column;
-        pointer-events: auto;
+        position: relative; width: min(100%, 520px); max-height: calc(100vh - 28px);
+        background: #FFFFFF; border-radius: 20px; overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18); display: flex; flex-direction: column; pointer-events: auto;
     }}
-    .modal-img-area {{
-        width: 100%;
-        background: #FFFFFF;
-        padding: 14px 14px 0 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 1 auto;
-        min-height: 0;
-    }}
-    .modal-img {{
-        display: block;
-        width: auto;
-        height: auto;
-        max-width: 100%;
-        max-height: 52vh;
-        object-fit: contain;
-        border-radius: 12px;
-        background: #FFFFFF;
-    }}
-    .modal-body {{
-        padding: 16px 18px 18px 18px;
-        color: #1C1C1E;
-        background: #FFFFFF;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }}
-    .modal-name {{
-        font-size: 20px;
-        font-weight: 900;
-        margin-bottom: 8px;
-        line-height: 1.25;
-    }}
-    .modal-text {{
-        font-size: 16px;
-        line-height: 1.45;
-        white-space: pre-wrap;
-        word-break: keep-all;
-    }}
-    .modal-time {{
-        margin-top: 12px;
-        font-size: 13px;
-        color: #8E8E93;
-    }}
+    .modal-img-area {{ width: 100%; background: #FFFFFF; padding: 14px 14px 0 14px; display: flex; align-items: center; justify-content: center; flex: 0 1 auto; min-height: 0; }}
+    .modal-img {{ display: block; width: auto; height: auto; max-width: 100%; max-height: 52vh; object-fit: contain; border-radius: 12px; background: #FFFFFF; }}
+    .modal-body {{ padding: 16px 18px 18px 18px; color: #1C1C1E; background: #FFFFFF; overflow-y: auto; -webkit-overflow-scrolling: touch; }}
+    .modal-name {{ font-size: 20px; font-weight: 900; margin-bottom: 8px; line-height: 1.25; }}
+    .modal-text {{ font-size: 16px; line-height: 1.45; white-space: pre-wrap; word-break: keep-all; }}
+    .modal-time {{ margin-top: 12px; font-size: 13px; color: #8E8E93; }}
     .close-btn {{
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 3;
-        width: 38px;
-        height: 38px;
-        border: 0;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.96);
-        color: #111;
-        font-size: 28px;
-        line-height: 36px;
-        cursor: pointer;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.22);
-    }}
-    @media (max-width: 430px) {{
-        .modal {{ padding: 10px; align-items: flex-start; padding-top: 16px; }}
-        .modal-card {{ width: 100%; max-height: calc(100vh - 32px); border-radius: 18px; }}
-        .modal-img-area {{ padding: 12px 12px 0 12px; }}
-        .modal-img {{ max-height: 44vh; }}
-        .modal-body {{ padding: 15px 16px 17px 16px; }}
-        .modal-name {{ font-size: 20px; }}
-        .modal-text {{ font-size: 16px; }}
-        .close-btn {{ width: 40px; height: 40px; line-height: 38px; }}
+        position: absolute; top: 10px; right: 10px; z-index: 3; width: 38px; height: 38px; border: 0;
+        border-radius: 999px; background: rgba(255,255,255,0.96); color: #111; font-size: 28px; line-height: 36px;
+        cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.22);
     }}
 </style>
 </head>
@@ -338,14 +248,8 @@ def build_gallery_component_html(cheers):
     <div id=\"modal\" class=\"modal\" aria-hidden=\"true\">
         <div class=\"modal-card\" role=\"dialog\" aria-modal=\"true\">
             <button class=\"close-btn\" id=\"closeBtn\" type=\"button\" aria-label=\"닫기\">×</button>
-            <div class=\"modal-img-area\">
-                <img id=\"modalImg\" class=\"modal-img\" src=\"\" alt=\"\" />
-            </div>
-            <div class=\"modal-body\">
-                <div id=\"modalName\" class=\"modal-name\"></div>
-                <div id=\"modalText\" class=\"modal-text\"></div>
-                <div id=\"modalTime\" class=\"modal-time\"></div>
-            </div>
+            <div class=\"modal-img-area\"><img id=\"modalImg\" class=\"modal-img\" src=\"\" alt=\"\" /></div>
+            <div class=\"modal-body\"><div id=\"modalName\" class=\"modal-name\"></div><div id=\"modalText\" class=\"modal-text\"></div><div id=\"modalTime\" class=\"modal-time\"></div></div>
         </div>
     </div>
 <script>
@@ -360,32 +264,21 @@ def build_gallery_component_html(cheers):
     const closeBtn = document.getElementById('closeBtn');
 
     function escapeText(value) {{
-        return String(value || '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('\\"', '&quot;')
-            .replaceAll("'", '&#039;');
+        return String(value || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\\"', '&quot;').replaceAll("'", '&#039;');
     }}
-
     function openModal(item) {{
         modalImg.src = 'data:image/jpeg;base64,' + item.image;
-        modalImg.alt = item.name || '사진';
         modalName.innerHTML = '👤 ' + escapeText(item.name || '사진');
         modalText.innerHTML = escapeText(item.text || '');
         modalTime.innerHTML = item.time ? ('작성 시간: ' + escapeText(item.time)) : '';
         document.body.classList.add('modal-open');
         modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
     }}
-
     function closeModal() {{
         modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('modal-open');
         modalImg.src = '';
     }}
-
     items.forEach(function(item) {{
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -410,37 +303,43 @@ if st.session_state.force_scroll or st.session_state.prev_view != st.session_sta
     st.session_state.force_scroll = False
     st.session_state.prev_view = st.session_state.view
 
-# [해결] 기기별 호환성 및 다크모드 대응 CSS
+# [해결] 갤럭시 겹침 방지 및 다크모드 가독성 통합 CSS
 hero_bg = get_base64_img("stadium.jpg") or get_base64_img("cheer.jpg")
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     
-    /* 전체 배경 흰색 강제 및 글자색 다크 그레이 고정 */
+    /* 1. 배경색 및 텍스트 색상 강제 고정 (다크모드/라이트모드 무관) */
     .stApp {{ 
-        font-family: 'Pretendard', sans-serif; 
         background-color: #FFFFFF !important; 
         color: #1C1C1E !important; 
+        font-family: 'Pretendard', sans-serif;
     }}
     
-    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
+    /* 모든 텍스트 요소를 명시적으로 어두운 색으로 지정 */
+    p, span, div, h1, h2, h3, h4, li, label {{ color: #1C1C1E !important; }}
     
-    /* 갤럭시 겹침 방지를 위해 hero-section 여백 최적화 */
+    /* 2. 갤럭시 겹침 방지: 음수 마진 제거 및 패딩 기반 여백 조절 */
+    .block-container {{ padding-top: 2rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
+    
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{hero_bg}');
         background-size: cover; background-position: center;
-        padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
-        color: white !important; margin: -5rem -1rem 1.5rem -1rem;
-        position: relative; z-index: 1;
+        padding: 100px 25px 40px 25px; border-radius: 0 0 35px 35px;
+        margin: -2rem -1rem 1.5rem -1rem; /* 마진 폭 조절 */
+        position: relative; z-index: 10;
     }}
-    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; color: white !important; }}
     
-    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; color: #1C1C1E !important; }}
+    /* 히어로 섹션 내 글자만 흰색 유지 */
+    .hero-section *, .card-content * {{ color: #FFFFFF !important; }}
+    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
+
+    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
     
     .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white !important; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
     
-    /* 모바일 가로 배열 유지 */
+    /* 바둑판 그리드 유지 */
     div[data-testid="column"] {{ width: 32% !important; flex: 1 1 32% !important; min-width: 32% !important; }}
     div[data-testid="stHorizontalBlock"] {{ display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 5px !important; }}
     
@@ -449,11 +348,7 @@ st.markdown(f"""
         overflow: hidden; background-size: cover; background-position: center; 
         display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; border: 1px solid #E5E5EA;
     }}
-    .card-content {{ position: relative; z-index: 2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); color: white !important; }}
-    
-    /* 텍스트 가독성 강제 (아이폰 다크모드 대응) */
-    p, span, h1, h2, h3, h4, div {{ color: #1C1C1E; }}
-    .hero-section *, .card-content * {{ color: white !important; }}
+    .card-content {{ position: relative; z-index: 2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -462,9 +357,9 @@ main_app_canvas = st.container()
 with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500; color:white;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
-        st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30 !important; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
         
         st.markdown("#### 💬 현장 소통 & 응원")
         if st.button("📸 함께 응원하기"): navigate_to('cheer')
@@ -474,9 +369,9 @@ with main_app_canvas:
         st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white !important; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
         for name, info in program_data.items():
             card_bg = get_base64_img(info.get("bg_file", ""))
-            st.markdown(f"""<div class="program-card" style="background-image: url('data:image/jpeg;base64,{card_bg}');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white !important; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white !important;">{name}</div></div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="program-card" style="background-image: url('data:image/jpeg;base64,{card_bg}');"><div class="card-content"><div style="font-size:11px; font-weight:800; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800;">{name}</div></div></div>""", unsafe_allow_html=True)
             if st.button(f"{name} 상세보기", key=f"btn_{name}"): navigate_to('detail', name)
-        st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF !important; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
     # [2] CHEER FEED VIEW
     elif st.session_state.view == 'cheer':
@@ -560,20 +455,20 @@ with main_app_canvas:
         name = st.session_state.target
         item = program_data.get(name, {})
         detail_bg = get_base64_img(item.get("bg_file", ""))
-        points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
+        points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px;">• {p}</div>' for p in item.get("points", [])])
         
         st.markdown(f"""
         <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg}'); 
                     background-size: cover; background-position: center; height: 180px; 
                     border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
-            <div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+            <div style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
                 <div style="font-size: 11px; font-weight: 700; opacity: 0.8; color: white !important;">{item.get('tag')}</div>
                 <div style="font-size: 26px; font-weight: 900; color: white !important;">{name}</div>
             </div>
         </div>
         <div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;">
-            <h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3>
-            <p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p>
+            <h3 style="margin:0 0 15px 0; font-weight:800;">{item.get('detail_title')}</h3>
+            <p style="font-size: 16px; line-height: 1.6;">{item.get('desc')}</p>
         """, unsafe_allow_html=True)
 
         # [해결] extra_img 필드가 있으면 설명 바로 아래 이미지 삽입
@@ -593,5 +488,5 @@ with main_app_canvas:
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#C7C7CC !important; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
 
