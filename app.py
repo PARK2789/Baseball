@@ -103,7 +103,6 @@ def get_db():
         return firestore.Client(credentials=creds)
     except: return None
 
-#@st.cache_data
 def get_base64_img(file_path):
     if not file_path:
         return ""
