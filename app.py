@@ -128,11 +128,31 @@ EVENT_COLLECTION = f"artifacts/{app_id}/public/data/events"
 
 # programs.json 로드
 program_data = {}
-if os.path.exists("programs.json"):
-    try:
-        with open("programs.json", "r", encoding="utf-8") as f:
-            program_data = json.load(f)
-    except: pass
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROGRAMS_JSON_PATH = os.path.join(BASE_DIR, "programs.json")
+
+try:
+    with open(PROGRAMS_JSON_PATH, "r", encoding="utf-8") as f:
+        program_data = json.load(f)
+
+except FileNotFoundError:
+    st.error(
+        f"❌ programs.json 파일을 찾을 수 없습니다.\n"
+        f"확인 경로: {PROGRAMS_JSON_PATH}"
+    )
+
+except json.JSONDecodeError as e:
+    st.error(
+        f"❌ programs.json 문법(JSON 형식) 오류\n"
+        f"{e}"
+    )
+
+except Exception as e:
+    st.error(
+        f"❌ programs.json 로딩 오류\n"
+        f"{e}"
+    )
 
 # [해결] 관리자 로그인 상태 유지 강화
 with st.sidebar:
