@@ -560,13 +560,13 @@ with main_app_canvas:
                     </div>
                     """, unsafe_allow_html=True)
 
-                    for ev in events[:5]:
-                        ec, dc = st.columns([4, 1])
-                        ec.markdown(f"• **{ev['name']}**: {ev['hr_player']} / {ev['hit_player']}")
-                        if st.session_state.is_admin:
-                            if dc.button("삭제", key=f"del_ev_{ev['id']}"):
-                                db.collection(EVENT_COLLECTION).document(ev['id']).delete()
-                                st.rerun()
+                for ev in events[:5]:
+                    ec, dc = st.columns([4, 1])
+                    ec.markdown(f"• **{ev['name']}**: {ev['hr_player']} / {ev['hit_player']}")
+                    if st.session_state.is_admin:
+                        if dc.button("삭제", key=f"del_ev_{ev['id']}"):
+                            db.collection(EVENT_COLLECTION).document(ev['id']).delete()
+                            st.rerun()
 
             st.markdown("---")
             cheer_docs = db.collection(CHEER_COLLECTION).stream()
