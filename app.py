@@ -520,7 +520,7 @@ with main_app_canvas:
     # [2] CHEER FEED VIEW (3열 바둑판 및 직접 삭제 모드)
     elif st.session_state.view == 'cheer':
         st.markdown('''<h2 style="font-weight:900; margin-bottom:5px;">📸 함께 응원하기</h2>
-        <p style="margin-top:0; color:#6B6B70; font-size:14px; line-height:1.5;">참여하신 분들께는 소정의 기념품 지급 예정입니다.</p>''', unsafe_allow_html=True)
+        <p style="margin-top:0; color:#6B6B70; font-size:16px; line-height:1.5;">참여하신 분들께는 소정의 기념품 지급 예정입니다.</p>''', unsafe_allow_html=True)
         
         if st.session_state.is_admin:
             st.session_state.edit_mode = st.toggle("🛠 관리자 삭제 모드 활성화", value=st.session_state.edit_mode)
