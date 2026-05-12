@@ -7,6 +7,7 @@ import os
 import json
 import re
 import unicodedata
+from urllib.parse import quote
 from datetime import datetime
 from google.cloud import firestore
 from google.oauth2 import service_account
@@ -144,6 +145,10 @@ with st.sidebar:
         st.session_state.is_admin = False
 
 def navigate_to(view, target=None):
+    try:
+        st.query_params.clear()
+    except Exception:
+        pass
     st.session_state.view = view
     st.session_state.target = target
     st.session_state.force_scroll = True
@@ -164,76 +169,33 @@ def show_post_modal(post):
             st.rerun()
 
 
-def render_clickable_thumbnail(post):
+def build_gallery_html(cheers):
     """
-    Streamlit 기본 버튼을 사용하되, JS로 버튼 라벨을 숨기고
-    해당 버튼을 이미지 썸네일처럼 보이게 변환합니다.
-    버튼 클릭 이벤트는 그대로 유지되므로 st.dialog 상세보기도 정상 동작합니다.
+    갤러리 화면만 HTML/CSS grid로 렌더링합니다.
+    사진 클릭 시 같은 앱 URL에 gallery_post 파라미터를 붙이고,
+    Python 영역에서 해당 파라미터를 감지해 st.dialog를 띄웁니다.
+    새 브라우저 탭이나 별도 상세 페이지를 만들지 않습니다.
     """
-    marker = f"gallery_thumb_{post['id']}"
-    img_src = f"data:image/jpeg;base64,{post['image']}"
+    html = ['<div class="gallery-grid">']
 
-    if st.button(marker, key=f"thumb_btn_{post['id']}"):
-        show_post_modal(post)
+    for p in cheers:
+        post_id = str(p.get("id", ""))
+        img = p.get("image", "")
+        name = str(p.get("name", "사진"))
 
-    components.html(
-        f"""
-        <script>
-        (function() {{
-            const marker = {json.dumps(marker)};
-            const imgSrc = {json.dumps(img_src)};
-            const doc = window.parent.document;
+        html.append(f"""
+            <a class="gallery-item" href="?gallery_post={quote(post_id)}" title="{name}">
+                <img src="data:image/jpeg;base64,{img}" alt="{name}">
+            </a>
+        """)
 
-            function applyThumbStyle() {{
-                const buttons = Array.from(doc.querySelectorAll('button'));
-                const btn = buttons.find(function(b) {{
-                    return (b.innerText || '').trim() === marker;
-                }});
+    remainder = len(cheers) % 3
+    if remainder:
+        for _ in range(3 - remainder):
+            html.append('<div class="gallery-empty"></div>')
 
-                if (!btn) {{
-                    setTimeout(applyThumbStyle, 80);
-                    return;
-                }}
-
-                btn.setAttribute('aria-label', '사진 상세 보기');
-                btn.title = '사진 상세 보기';
-
-                btn.style.setProperty('width', '100%', 'important');
-                btn.style.setProperty('height', '92px', 'important');
-                btn.style.setProperty('min-height', '92px', 'important');
-                btn.style.setProperty('padding', '0', 'important');
-                btn.style.setProperty('margin', '0', 'important');
-                btn.style.setProperty('border', 'none', 'important');
-                btn.style.setProperty('border-radius', '10px', 'important');
-                btn.style.setProperty('overflow', 'hidden', 'important');
-                btn.style.setProperty('background-image', 'url("' + imgSrc + '")', 'important');
-                btn.style.setProperty('background-size', 'cover', 'important');
-                btn.style.setProperty('background-position', 'center', 'important');
-                btn.style.setProperty('background-repeat', 'no-repeat', 'important');
-                btn.style.setProperty('box-shadow', 'none', 'important');
-                btn.style.setProperty('cursor', 'pointer', 'important');
-
-                // 버튼 안 텍스트 숨김
-                const spans = btn.querySelectorAll('span, div, p');
-                spans.forEach(function(el) {{
-                    el.style.setProperty('color', 'transparent', 'important');
-                    el.style.setProperty('font-size', '0px', 'important');
-                    el.style.setProperty('line-height', '0', 'important');
-                }});
-
-                btn.style.setProperty('color', 'transparent', 'important');
-                btn.style.setProperty('font-size', '0px', 'important');
-            }}
-
-            applyThumbStyle();
-            setTimeout(applyThumbStyle, 150);
-            setTimeout(applyThumbStyle, 400);
-            setTimeout(applyThumbStyle, 900);
-        }})();
-        </script>
-        """,
-        height=0,
-    )
+    html.append('</div>')
+    return "\n".join(html)
 
 # --- [UI 렌더링 영역 시작] ---
 
@@ -355,24 +317,27 @@ with main_app_canvas:
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # 갤러리 영역 시작점 표시: 이 지점 이후의 st.columns만 3열 썸네일로 고정
-                st.markdown('<div class="gallery-grid-scope"></div>', unsafe_allow_html=True)
+                # URL 파라미터로 선택된 사진이 있으면 현재 화면 위에 팝업 상세보기 표시
+                selected_post_id = st.query_params.get("gallery_post", None)
+                if selected_post_id:
+                    selected_post = next((p for p in cheers if str(p.get("id")) == str(selected_post_id)), None)
+                    if selected_post:
+                        show_post_modal(selected_post)
 
-                for i in range(0, len(cheers), 3):
-                    row_cols = st.columns(3, gap="small")
+                # 사진 자체를 클릭할 수 있는 3열 썸네일 갤러리
+                st.markdown(build_gallery_html(cheers), unsafe_allow_html=True)
 
-                    for j in range(3):
-                        if i + j < len(cheers):
-                            p = cheers[i + j]
-
-                            with row_cols[j]:
-                                # 사진 자체가 버튼 역할을 하며, 클릭 시 팝업 상세보기
-                                render_clickable_thumbnail(p)
-
-                                # 관리자 삭제 모드는 기존 기능 유지
-                                if st.session_state.is_admin and st.session_state.edit_mode:
+                # 관리자 삭제 모드는 기존 기능 유지: 갤러리 아래에 삭제 버튼만 별도 제공
+                if st.session_state.is_admin and st.session_state.edit_mode:
+                    st.markdown("##### 🗑 삭제할 사진 선택")
+                    for i in range(0, len(cheers), 3):
+                        del_cols = st.columns(3, gap="small")
+                        for j in range(3):
+                            if i + j < len(cheers):
+                                p = cheers[i + j]
+                                with del_cols[j]:
                                     st.markdown('<div class="del-btn-style">', unsafe_allow_html=True)
-                                    if st.button("❌ 삭제", key=f"th_del_{p['id']}"):
+                                    if st.button("삭제", key=f"th_del_{p['id']}"):
                                         db.collection(CHEER_COLLECTION).document(p['id']).delete()
                                         st.rerun()
                                     st.markdown('</div>', unsafe_allow_html=True)
