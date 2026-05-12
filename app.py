@@ -13,12 +13,17 @@ from google.oauth2 import service_account
 from PIL import Image, ImageOps
 import io
 
-# 1. 페이지 설정
+# 1. 페이지 설정 (최상단)
 st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
 
 # --- [성식님 제안 & GPT 수정: 최상단 고정 스크립트 완벽 유지] ---
 def force_scroll_top():
+    """
+    Streamlit 화면 전환 시 브라우저 스크롤 위치를 강력하게 초기화합니다.
+    app_scroll_top_fixed.txt의 검증된 로직을 그대로 사용합니다.
+    """
     scroll_seq = st.session_state.get("scroll_seq", 0)
+
     components.html(
         f"""
         <script>
@@ -34,7 +39,7 @@ def force_scroll_top():
                     '.main',
                     '.stApp'
                 ];
-                const targets = selectors.map(s => doc.querySelector(s)).filter(Boolean);
+                const targets = selectors.map(selector => doc.querySelector(selector)).filter(Boolean);
                 targets.push(doc.scrollingElement, doc.documentElement, doc.body, window.parent);
                 targets.forEach(el => {{
                     try {{
@@ -64,12 +69,15 @@ def force_scroll_top():
         height=0,
     )
 
-# --- [데이터 및 세션 관리] ---
+# --- [데이터 처리 및 세션 관리 (UI 렌더링 전 완료)] ---
+
+# 세션 초기화
 if 'view' not in st.session_state: st.session_state.view = 'home'
 if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
-if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
+if 'edit_mode' not in st.session_state: st.session_state.edit_mode = False
 if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
+if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
 
 @st.cache_resource
 def get_db():
@@ -113,9 +121,12 @@ if os.path.exists("programs.json"):
 # 관리자 로그인 유지
 with st.sidebar:
     admin_pw = st.text_input("Admin Password", type="password")
-    if admin_pw == "1234": st.session_state.is_admin = True
-    elif admin_pw == "": pass
-    else: st.session_state.is_admin = False
+    if admin_pw == "1234":
+        st.session_state.is_admin = True
+    elif admin_pw == "":
+        pass 
+    else:
+        st.session_state.is_admin = False
 
 def navigate_to(view, target=None):
     st.session_state.view = view
@@ -124,31 +135,36 @@ def navigate_to(view, target=None):
     st.session_state.scroll_seq += 1
     st.rerun()
 
-# [동일 페이지 확대] 상세보기 모달
+# [해결] 동일 페이지 확대용 모달 다이얼로그
 @st.dialog("📸 응원 상세 보기")
 def show_post_modal(post):
     st.image(f"data:image/jpeg;base64,{post['image']}", use_container_width=True)
     st.markdown(f"### 👤 {post['name']}")
     st.write(post['text'])
     st.caption(f"작성 시간: {post.get('timestamp', datetime.now()).strftime('%H:%M')}")
+    
     if st.session_state.is_admin:
-        if st.button("🗑️ 이 사진 삭제하기", key=f"modal_del_{post['id']}"):
+        st.markdown("---")
+        if st.button("🗑️ 관리자 삭제", key=f"dlg_del_{post['id']}"):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
             st.rerun()
 
-# --- [UI 렌더링 영역] ---
+# --- [UI 렌더링 영역 시작] ---
 
+# 화면 전환 시 강력한 스크롤 실행
 if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.force_scroll = False
     st.session_state.prev_view = st.session_state.view
 
+# 디자인 시스템 (CSS)
 hero_bg = get_base64_img("stadium.jpg") or get_base64_img("cheer.jpg")
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
     .block-container {{ padding-top: 4.5rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
+    
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{hero_bg}');
         background-size: cover; background-position: center;
@@ -157,25 +173,29 @@ st.markdown(f"""
     }}
     .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
     .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
+    
     .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
+    
+    /* 썸네일 전용 버튼 스타일 */
+    .thumb-btn-container button {{ height: 2.2em !important; font-size: 13px !important; margin-bottom: 5px !important; border-radius: 10px !important; }}
+    .del-btn button {{ background-color: #FF3B30 !important; color: white !important; }}
+
     .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
+
     .program-card {{
         position: relative; height: 180px; border-radius: 24px; margin-bottom: 10px; 
         overflow: hidden; background-size: cover; background-position: center; 
         display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; border: 1px solid #E5E5EA;
     }}
     .card-content {{ position: relative; z-index: 2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); }}
-    
-    /* 갤러리 이미지 스타일 */
-    .gallery-img-container img {{ border-radius: 12px; object-fit: cover; aspect-ratio: 1/1; }}
 </style>
 """, unsafe_allow_html=True)
 
-main_view = st.container()
+main_canvas = st.container()
 
-with main_view:
-    # [1] HOME
+with main_canvas:
+    # [1] HOME VIEW
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
@@ -197,10 +217,13 @@ with main_view:
         
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED (새로운 탭 방지 및 썸네일 직접 삭제 적용)
+    # [2] CHEER FEED VIEW (3열 바둑판 그리드 복구)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         
+        if st.session_state.is_admin:
+            st.session_state.edit_mode = st.toggle("🛠 관리자 전용 삭제 모드 활성화", value=st.session_state.edit_mode)
+
         c1, c2 = st.columns(2)
         with c1: 
             if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
@@ -208,6 +231,7 @@ with main_view:
             if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
 
         if db:
+            # 이벤트 배너
             ev_docs = db.collection(EVENT_COLLECTION).stream()
             events = sorted([doc.to_dict() | {"id": doc.id} for doc in ev_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             if events:
@@ -228,32 +252,36 @@ with main_view:
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # [해결] 3열 네이티브 그리드 (새로운 탭 절대 안 열림)
+                # [해결] 3열 바둑판 그리드 구현 (네이티브 컬럼 사용)
                 for i in range(0, len(cheers), 3):
-                    cols = st.columns(3)
+                    row_cols = st.columns(3)
                     for j in range(3):
                         if i + j < len(cheers):
                             p = cheers[i+j]
-                            with cols[j]:
-                                st.markdown(f'<div class="gallery-img-container">', unsafe_allow_html=True)
+                            with row_cols[j]:
+                                # 이미지 출력
                                 st.image(f"data:image/jpeg;base64,{p['image']}", use_container_width=True)
-                                st.markdown(f'</div>', unsafe_allow_html=True)
                                 
-                                # 확대 버튼 (동일 페이지 st.dialog 실행)
-                                if st.button("🔍 확대", key=f"zoom_{p['id']}"):
+                                # 하단 버튼 컨테이너
+                                st.markdown('<div class="thumb-btn-container">', unsafe_allow_html=True)
+                                # 확대 버튼 (동일 페이지 모달)
+                                if st.button(f"🔍 {p['name'][:3]}..", key=f"zoom_{p['id']}"):
                                     show_post_modal(p)
                                 
-                                # [해결] 관리자인 경우 썸네일 하단에 삭제 버튼 즉시 노출
-                                if st.session_state.is_admin:
-                                    if st.button("❌ 삭제", key=f"thumb_del_{p['id']}"):
+                                # 관리자 직접 삭제
+                                if st.session_state.is_admin and st.session_state.edit_mode:
+                                    st.markdown('<div class="del-btn">', unsafe_allow_html=True)
+                                    if st.button("❌ 삭제", key=f"th_del_{p['id']}"):
                                         db.collection(CHEER_COLLECTION).document(p['id']).delete()
                                         st.rerun()
+                                    st.markdown('</div>', unsafe_allow_html=True)
+                                st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # [3] CHEER VIDEO / [4] UPLOAD / [5] EVENT / [6] DETAIL
+    # [3] CHEER VIDEO / [4] UPLOAD / [5] EVENT / [6] DETAIL (동일 유지)
     elif st.session_state.view == 'cheer_video':
         st.markdown('<h2 style="font-weight:900;">📣 응원가 배우기</h2>', unsafe_allow_html=True)
         st.video("https://m.youtube.com/watch?v=BhwoJFjkAf8")
