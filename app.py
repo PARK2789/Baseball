@@ -497,7 +497,7 @@ main_app_canvas = st.container()
 with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">5/12(화) CEO Talk⁺</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
         
@@ -589,7 +589,7 @@ with main_app_canvas:
 
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-        c_name = st.text_input("닉네임 또는 조")
+        c_name = st.text_input("이름(실명을 기입해주세요)")
         c_text = st.text_area("현장 소감")
         c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
         if st.button("✅ 게시하기"):
@@ -607,10 +607,10 @@ with main_app_canvas:
 
     elif st.session_state.view == 'event_upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">🎯 경기 예상하기</h2>', unsafe_allow_html=True)
-        e_name = st.text_input("닉네임 또는 조")
+        e_name = st.text_input("이름(실명을 기입해주세요)")
         e_hr = st.text_input("⚾️ 첫 홈런 선수?")
         e_hit = st.text_input("⚾️ 첫 안타 선수?")
-        if st.button("🚀 예측 제출"):
+        if st.button("🚀 제출하기"):
             if e_name and e_hr and e_hit and db:
                 db.collection(EVENT_COLLECTION).add({"name": e_name, "hr_player": e_hr, "hit_player": e_hit, "timestamp": datetime.now()})
                 navigate_to('cheer')
