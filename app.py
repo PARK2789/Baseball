@@ -595,6 +595,12 @@ with main_app_canvas:
                 img_b64 = compress_image(c_file) if c_file else ""
                 db.collection(CHEER_COLLECTION).add({"name": c_name, "text": c_text, "image": img_b64, "timestamp": datetime.now()})
                 navigate_to('cheer')
+        st.markdown(
+            "<div style='text-align:center; font-size:14px; color:#6B6B70; margin:18px 0 8px 0;'>"
+            "이전 페이지로 가시려면 ‘취소’ 버튼을 눌러주세요."
+            "</div>",
+            unsafe_allow_html=True
+        )
         if st.button("❌ 취소"): navigate_to('cheer')
 
     elif st.session_state.view == 'event_upload':
@@ -606,6 +612,12 @@ with main_app_canvas:
             if e_name and e_hr and e_hit and db:
                 db.collection(EVENT_COLLECTION).add({"name": e_name, "hr_player": e_hr, "hit_player": e_hit, "timestamp": datetime.now()})
                 navigate_to('cheer')
+        st.markdown(
+            "<div style='text-align:center; font-size:14px; color:#6B6B70; margin:18px 0 8px 0;'>"
+            "이전 페이지로 가시려면 ‘취소’ 버튼을 눌러주세요."
+            "</div>",
+            unsafe_allow_html=True
+        )
         if st.button("❌ 취소"): navigate_to('cheer')
 
     elif st.session_state.view == 'detail':
