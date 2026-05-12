@@ -191,25 +191,46 @@ st.markdown(f"""
     .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
     
-    /* [해결] 모바일 3열 바둑판 그리드 강제 고정 (Stacking 방지) */
-    div[data-testid="column"] {{
-        width: 32% !important;
-        flex: 1 1 32% !important;
-        min-width: 32% !important;
-    }}
-    div[data-testid="stHorizontalBlock"] {{
+    /* 갤러리 화면 전용: 모바일에서도 3열 바둑판 유지 */
+    div[data-testid="stHorizontalBlock"]:has(.gallery-cell) {{
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: wrap !important;
-        gap: 5px !important;
+        flex-wrap: nowrap !important;
+        gap: 0.35rem !important;
+        align-items: flex-start !important;
     }}
-    
-    /* 썸네일 내부 이미지 및 버튼 스타일 */
-    .thumb-img img {{ border-radius: 10px; object-fit: cover; aspect-ratio: 1/1; }}
+
+    div[data-testid="stHorizontalBlock"]:has(.gallery-cell) > div[data-testid="column"] {{
+        flex: 0 0 calc(33.333% - 0.25rem) !important;
+        width: calc(33.333% - 0.25rem) !important;
+        min-width: 0 !important;
+        max-width: calc(33.333% - 0.25rem) !important;
+    }}
+
+    div[data-testid="column"]:has(.gallery-cell) img {{
+        width: 100% !important;
+        aspect-ratio: 1 / 1 !important;
+        object-fit: cover !important;
+        border-radius: 10px !important;
+        display: block !important;
+    }}
+
+    .gallery-cell {{
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }}
+
     .gallery-btn button {{ 
-        height: 2.2em !important; font-size: 10px !important; 
-        margin-top: 4px !important; padding: 0 !important; border-radius: 8px !important; 
+        height: 2.2em !important;
+        min-height: 2.2em !important;
+        font-size: 10px !important; 
+        margin-top: 4px !important;
+        padding: 0 !important;
+        border-radius: 8px !important; 
     }}
+
     .del-btn-style button {{ background-color: #FF3B30 !important; color: white !important; }}
 
     .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
@@ -283,13 +304,15 @@ with main_app_canvas:
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # [해결] CSS 강제 고정을 통한 3열 바둑판 (모바일 대응)
+                # 갤러리 화면만 3열 바둑판으로 고정합니다.
+                # 다른 st.columns 영역에는 영향을 주지 않도록 각 썸네일 컬럼에 gallery-cell 마커를 넣습니다.
                 for i in range(0, len(cheers), 3):
-                    row_cols = st.columns(3)
+                    row_cols = st.columns(3, gap="small")
                     for j in range(3):
                         if i + j < len(cheers):
-                            p = cheers[i+j]
+                            p = cheers[i + j]
                             with row_cols[j]:
+                                st.markdown('<div class="gallery-cell"></div>', unsafe_allow_html=True)
                                 st.image(f"data:image/jpeg;base64,{p['image']}", use_container_width=True)
                                 
                                 # 하단 버튼 그룹
@@ -352,5 +375,4 @@ with main_app_canvas:
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
-
 
