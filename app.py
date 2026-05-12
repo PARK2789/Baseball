@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+st.error(DEBUG 2026-05-12-최신코드 실행중")
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
