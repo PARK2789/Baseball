@@ -163,6 +163,78 @@ def show_post_modal(post):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
             st.rerun()
 
+
+def render_clickable_thumbnail(post):
+    """
+    Streamlit 기본 버튼을 사용하되, JS로 버튼 라벨을 숨기고
+    해당 버튼을 이미지 썸네일처럼 보이게 변환합니다.
+    버튼 클릭 이벤트는 그대로 유지되므로 st.dialog 상세보기도 정상 동작합니다.
+    """
+    marker = f"gallery_thumb_{post['id']}"
+    img_src = f"data:image/jpeg;base64,{post['image']}"
+
+    if st.button(marker, key=f"thumb_btn_{post['id']}"):
+        show_post_modal(post)
+
+    components.html(
+        f"""
+        <script>
+        (function() {{
+            const marker = {json.dumps(marker)};
+            const imgSrc = {json.dumps(img_src)};
+            const doc = window.parent.document;
+
+            function applyThumbStyle() {{
+                const buttons = Array.from(doc.querySelectorAll('button'));
+                const btn = buttons.find(function(b) {{
+                    return (b.innerText || '').trim() === marker;
+                }});
+
+                if (!btn) {{
+                    setTimeout(applyThumbStyle, 80);
+                    return;
+                }}
+
+                btn.setAttribute('aria-label', '사진 상세 보기');
+                btn.title = '사진 상세 보기';
+
+                btn.style.setProperty('width', '100%', 'important');
+                btn.style.setProperty('height', '92px', 'important');
+                btn.style.setProperty('min-height', '92px', 'important');
+                btn.style.setProperty('padding', '0', 'important');
+                btn.style.setProperty('margin', '0', 'important');
+                btn.style.setProperty('border', 'none', 'important');
+                btn.style.setProperty('border-radius', '10px', 'important');
+                btn.style.setProperty('overflow', 'hidden', 'important');
+                btn.style.setProperty('background-image', 'url("' + imgSrc + '")', 'important');
+                btn.style.setProperty('background-size', 'cover', 'important');
+                btn.style.setProperty('background-position', 'center', 'important');
+                btn.style.setProperty('background-repeat', 'no-repeat', 'important');
+                btn.style.setProperty('box-shadow', 'none', 'important');
+                btn.style.setProperty('cursor', 'pointer', 'important');
+
+                // 버튼 안 텍스트 숨김
+                const spans = btn.querySelectorAll('span, div, p');
+                spans.forEach(function(el) {{
+                    el.style.setProperty('color', 'transparent', 'important');
+                    el.style.setProperty('font-size', '0px', 'important');
+                    el.style.setProperty('line-height', '0', 'important');
+                }});
+
+                btn.style.setProperty('color', 'transparent', 'important');
+                btn.style.setProperty('font-size', '0px', 'important');
+            }}
+
+            applyThumbStyle();
+            setTimeout(applyThumbStyle, 150);
+            setTimeout(applyThumbStyle, 400);
+            setTimeout(applyThumbStyle, 900);
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
 # --- [UI 렌더링 영역 시작] ---
 
 # 화면 전환 시 강력한 스크롤 실행
@@ -191,83 +263,26 @@ st.markdown(f"""
     .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
     
-    /* 갤러리 화면 전용: 모바일에서도 작은 3열 썸네일 유지 */
-    div[data-testid="stHorizontalBlock"]:has(.gallery-cell) {{
+    /* [해결] 모바일 3열 바둑판 그리드 강제 고정 (Stacking 방지) */
+    div[data-testid="column"] {{
+        width: 32% !important;
+        flex: 1 1 32% !important;
+        min-width: 32% !important;
+    }}
+    div[data-testid="stHorizontalBlock"] {{
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 0.35rem !important;
-        align-items: flex-start !important;
-        margin-bottom: 0.35rem !important;
+        flex-wrap: wrap !important;
+        gap: 5px !important;
     }}
-
-    div[data-testid="stHorizontalBlock"]:has(.gallery-cell) > div[data-testid="column"] {{
-        flex: 0 0 calc(33.333% - 0.25rem) !important;
-        width: calc(33.333% - 0.25rem) !important;
-        min-width: 0 !important;
-        max-width: calc(33.333% - 0.25rem) !important;
-        padding: 0 !important;
+    
+    /* 썸네일 내부 이미지 및 버튼 스타일 */
+    .thumb-img img {{ border-radius: 10px; object-fit: cover; aspect-ratio: 1/1; }}
+    .gallery-btn button {{ 
+        height: 2.2em !important; font-size: 10px !important; 
+        margin-top: 4px !important; padding: 0 !important; border-radius: 8px !important; 
     }}
-
-    .gallery-cell {{
-        height: 0;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-    }}
-
-    /* 사진 클릭용 버튼을 썸네일처럼 보이게 처리 */
-    .gallery-thumb-button-wrap div[data-testid="stButton"] {{
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-
-    .gallery-thumb-button-wrap div[data-testid="stButton"] > button {{
-        width: 100% !important;
-        height: 92px !important;
-        min-height: 92px !important;
-        max-height: 92px !important;
-        border-radius: 10px !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border: none !important;
-        overflow: hidden !important;
-        background-size: cover !important;
-        background-position: center !important;
-        background-repeat: no-repeat !important;
-        box-shadow: none !important;
-    }}
-
-    .gallery-thumb-button-wrap div[data-testid="stButton"] > button:hover {{
-        filter: brightness(0.92);
-        transform: scale(0.99);
-    }}
-
-    .gallery-thumb-button-wrap div[data-testid="stButton"] > button p,
-    .gallery-thumb-button-wrap div[data-testid="stButton"] > button div {{
-        color: transparent !important;
-        font-size: 0 !important;
-        line-height: 0 !important;
-    }}
-
-    @media (min-width: 420px) {{
-        .gallery-thumb-button-wrap div[data-testid="stButton"] > button {{
-            height: 110px !important;
-            min-height: 110px !important;
-            max-height: 110px !important;
-        }}
-    }}
-
-    .del-btn-style button {{
-        background-color: #FF3B30 !important;
-        color: white !important;
-        height: 2.1em !important;
-        min-height: 2.1em !important;
-        font-size: 10px !important;
-        margin-top: 4px !important;
-        padding: 0 !important;
-        border-radius: 8px !important;
-    }}
+    .del-btn-style button {{ background-color: #FF3B30 !important; color: white !important; }}
 
     .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
 
@@ -340,47 +355,27 @@ with main_app_canvas:
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # 갤러리 화면만 3열 바둑판으로 고정합니다.
-                # 사진 버튼 자체를 썸네일처럼 보여주고, 클릭 시 새 페이지 이동 없이 dialog 상세보기만 실행합니다.
+                # 갤러리 영역 시작점 표시: 이 지점 이후의 st.columns만 3열 썸네일로 고정
+                st.markdown('<div class="gallery-grid-scope"></div>', unsafe_allow_html=True)
+
                 for i in range(0, len(cheers), 3):
                     row_cols = st.columns(3, gap="small")
+
                     for j in range(3):
                         if i + j < len(cheers):
                             p = cheers[i + j]
-                            safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(p.get("id", i + j)))
-                            thumb_label = f"gallery_thumb_{safe_id}"
 
                             with row_cols[j]:
-                                st.markdown('<div class="gallery-cell"></div>', unsafe_allow_html=True)
+                                # 사진 자체가 버튼 역할을 하며, 클릭 시 팝업 상세보기
+                                render_clickable_thumbnail(p)
 
-                                # 각 버튼에 해당 사진을 배경 이미지로 지정합니다.
-                                # st.button 기능을 그대로 사용하므로 클릭하면 팝업 상세보기만 열립니다.
-                                st.markdown(
-                                    f"""
-                                    <style>
-                                    div[data-testid="stButton"]:has(button[aria-label="{thumb_label}"]) > button,
-                                    button[aria-label="{thumb_label}"] {{
-                                        background-image: url("data:image/jpeg;base64,{p['image']}") !important;
-                                    }}
-                                    </style>
-                                    <div class="gallery-thumb-button-wrap">
-                                    """,
-                                    unsafe_allow_html=True
-                                )
-
-                                if st.button(thumb_label, key=f"zoom_{p['id']}"):
-                                    show_post_modal(p)
-
-                                st.markdown('</div>', unsafe_allow_html=True)
-
-                                # [해결] 삭제 모드 시 썸네일 아래에 즉시 삭제 버튼 노출
+                                # 관리자 삭제 모드는 기존 기능 유지
                                 if st.session_state.is_admin and st.session_state.edit_mode:
                                     st.markdown('<div class="del-btn-style">', unsafe_allow_html=True)
                                     if st.button("❌ 삭제", key=f"th_del_{p['id']}"):
                                         db.collection(CHEER_COLLECTION).document(p['id']).delete()
                                         st.rerun()
                                     st.markdown('</div>', unsafe_allow_html=True)
-
 
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
@@ -428,4 +423,3 @@ with main_app_canvas:
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
-
