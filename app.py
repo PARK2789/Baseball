@@ -240,30 +240,47 @@ def build_gallery_component_html(cheers):
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: rgba(0,0,0,0.72);
-        padding: 18px;
+        background: rgba(0,0,0,0.55);
+        padding: 12px;
         align-items: center;
         justify-content: center;
     }}
     .modal.open {{ display: flex; }}
     .modal-card {{
+        position: relative;
         width: min(100%, 520px);
-        max-height: 92vh;
+        max-height: 88vh;
         background: #FFFFFF;
-        border-radius: 20px;
+        border-radius: 18px;
         overflow: hidden;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+        box-shadow: 0 12px 36px rgba(0,0,0,0.28);
+        display: flex;
+        flex-direction: column;
+    }}
+    .modal-img-wrap {{
+        width: 100%;
+        background: #F2F2F7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        max-height: 58vh;
+        overflow: hidden;
     }}
     .modal-img {{
-        width: 100%;
-        max-height: 62vh;
-        object-fit: contain;
-        background: #000;
         display: block;
+        width: auto;
+        max-width: 100%;
+        height: auto;
+        max-height: 58vh;
+        object-fit: contain;
+        background: transparent;
     }}
     .modal-body {{
-        padding: 16px 18px 18px 18px;
+        padding: 14px 16px 16px 16px;
         color: #1C1C1E;
+        background: #FFFFFF;
+        flex: 0 0 auto;
     }}
     .modal-name {{
         font-size: 18px;
@@ -283,17 +300,26 @@ def build_gallery_component_html(cheers):
     }}
     .close-btn {{
         position: absolute;
-        top: 14px;
-        right: 14px;
-        width: 38px;
-        height: 38px;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+        width: 34px;
+        height: 34px;
         border: 0;
         border-radius: 999px;
-        background: rgba(255,255,255,0.92);
+        background: rgba(255,255,255,0.94);
         color: #111;
         font-size: 24px;
-        line-height: 38px;
+        line-height: 34px;
         cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }}
+    @media (max-width: 430px) {{
+        .modal {{ padding: 8px; }}
+        .modal-card {{ width: 100%; max-height: 86vh; border-radius: 16px; }}
+        .modal-img-wrap {{ max-height: 52vh; }}
+        .modal-img {{ max-height: 52vh; }}
+        .modal-body {{ padding: 13px 15px 15px 15px; }}
     }}
 </style>
 </head>
