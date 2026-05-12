@@ -75,6 +75,8 @@ def force_scroll_top():
             }}
 
             runScrollBurst();
+
+            // 이미지/비디오/폰트 로딩 후 레이아웃이 밀리는 경우까지 보정
             window.parent.addEventListener("load", runScrollBurst, {{ once: true }});
         }})();
         </script>
@@ -82,15 +84,15 @@ def force_scroll_top():
         height=0,
     )
 
-# --- [데이터 처리 및 세션 관리] ---
+# --- [데이터 처리 및 세션 관리 (UI 렌더링 전 완료)] ---
 
-# 세션 초기화
+# 세션 초기화 (상태 보존용)
 if 'view' not in st.session_state: st.session_state.view = 'home'
 if 'prev_view' not in st.session_state: st.session_state.prev_view = 'home'
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'edit_mode' not in st.session_state: st.session_state.edit_mode = False
-if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
 if 'scroll_seq' not in st.session_state: st.session_state.scroll_seq = 0
+if 'force_scroll' not in st.session_state: st.session_state.force_scroll = False
 
 @st.cache_resource
 def get_db():
@@ -131,12 +133,15 @@ if os.path.exists("programs.json"):
             program_data = json.load(f)
     except: pass
 
-# 관리자 로그인 (세션 유지 로직)
+# [해결] 관리자 로그인 상태 유지 강화
 with st.sidebar:
     admin_pw = st.text_input("Admin Password", type="password")
-    if admin_pw == "1234": st.session_state.is_admin = True
-    elif admin_pw == "": pass
-    else: st.session_state.is_admin = False
+    if admin_pw == "1234":
+        st.session_state.is_admin = True
+    elif admin_pw == "":
+        pass # 공백일 때는 이전의 True/False 상태를 그대로 유지
+    else:
+        st.session_state.is_admin = False
 
 def navigate_to(view, target=None):
     st.session_state.view = view
@@ -145,7 +150,7 @@ def navigate_to(view, target=None):
     st.session_state.scroll_seq += 1
     st.rerun()
 
-# 상세보기 팝업 (동일 페이지 확대)
+# 상세보기 다이얼로그 (팝업 확대)
 @st.dialog("📸 응원 상세 보기")
 def show_post_modal(post):
     st.image(f"data:image/jpeg;base64,{post['image']}", use_container_width=True)
@@ -154,19 +159,19 @@ def show_post_modal(post):
     st.caption(f"작성 시간: {post.get('timestamp', datetime.now()).strftime('%H:%M')}")
     if st.session_state.is_admin:
         st.markdown("---")
-        if st.button("🗑️ 이 사진 삭제", key=f"dlg_del_{post['id']}"):
+        if st.button("🗑️ 관리자 즉시 삭제", key=f"dlg_del_{post['id']}"):
             db.collection(CHEER_COLLECTION).document(post['id']).delete()
             st.rerun()
 
-# --- [UI 렌더링 영역] ---
+# --- [UI 렌더링 영역 시작] ---
 
-# 화면 전환 시 스크롤 실행
+# 화면 전환 시 강력한 스크롤 실행
 if st.session_state.force_scroll or st.session_state.prev_view != st.session_state.view:
     force_scroll_top()
     st.session_state.force_scroll = False
     st.session_state.prev_view = st.session_state.view
 
-# 디자인 시스템
+# 디자인 시스템 (CSS)
 hero_bg = get_base64_img("stadium.jpg") or get_base64_img("cheer.jpg")
 st.markdown(f"""
 <style>
@@ -186,16 +191,25 @@ st.markdown(f"""
     .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
     
-    /* [해결] 모바일 3열 바둑판 그리드 강제 고정 */
-    [data-testid="column"] {{
-        width: 32.5% !important;
-        flex: 0 0 32.5% !important;
-        min-width: 32.5% !important;
+    /* [해결] 모바일 3열 바둑판 그리드 강제 고정 (Stacking 방지) */
+    div[data-testid="column"] {{
+        width: 32% !important;
+        flex: 1 1 32% !important;
+        min-width: 32% !important;
+    }}
+    div[data-testid="stHorizontalBlock"] {{
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 5px !important;
     }}
     
     /* 썸네일 내부 이미지 및 버튼 스타일 */
-    .thumb-img img {{ border-radius: 12px; object-fit: cover; aspect-ratio: 1/1; }}
-    .gallery-btn button {{ height: 2.2em !important; font-size: 11px !important; margin-top: 4px !important; padding: 0 !important; border-radius: 8px !important; }}
+    .thumb-img img {{ border-radius: 10px; object-fit: cover; aspect-ratio: 1/1; }}
+    .gallery-btn button {{ 
+        height: 2.2em !important; font-size: 10px !important; 
+        margin-top: 4px !important; padding: 0 !important; border-radius: 8px !important; 
+    }}
     .del-btn-style button {{ background-color: #FF3B30 !important; color: white !important; }}
 
     .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
@@ -209,9 +223,9 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-main_canvas = st.container()
+main_app_canvas = st.container()
 
-with main_canvas:
+with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
         st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
@@ -226,7 +240,7 @@ with main_canvas:
         naver_url = "https://m.sports.naver.com/game/20260512SSLG02026/cheer"
         st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
         
-        st.markdown('#### 🚩 관전 가이드')
+        # [수정] "관전 가이드" 제목 삭제 및 카드 바로 노출
         for name, info in program_data.items():
             card_bg = get_base64_img(info.get("bg_file", ""))
             st.markdown(f"""<div class="program-card" style="background-image: url('data:image/jpeg;base64,{card_bg}');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white;">{name}</div></div></div>""", unsafe_allow_html=True)
@@ -234,7 +248,7 @@ with main_canvas:
         
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
-    # [2] CHEER FEED VIEW (완벽한 바둑판 그리드)
+    # [2] CHEER FEED VIEW (3열 바둑판 및 직접 삭제 모드)
     elif st.session_state.view == 'cheer':
         st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
         
@@ -248,7 +262,7 @@ with main_canvas:
             if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
 
         if db:
-            # 이벤트 배너
+            # 이벤트 현황
             ev_docs = db.collection(EVENT_COLLECTION).stream()
             events = sorted([doc.to_dict() | {"id": doc.id} for doc in ev_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             if events:
@@ -269,14 +283,13 @@ with main_canvas:
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # [해결] 네이티브 3열 그리드 (모바일 강제 고정 포함)
+                # [해결] CSS 강제 고정을 통한 3열 바둑판 (모바일 대응)
                 for i in range(0, len(cheers), 3):
-                    cols = st.columns(3)
+                    row_cols = st.columns(3)
                     for j in range(3):
                         if i + j < len(cheers):
                             p = cheers[i+j]
-                            with cols[j]:
-                                # 이미지 출력
+                            with row_cols[j]:
                                 st.image(f"data:image/jpeg;base64,{p['image']}", use_container_width=True)
                                 
                                 # 하단 버튼 그룹
@@ -284,10 +297,10 @@ with main_canvas:
                                 if st.button(f"🔍 {p['name'][:3]}..", key=f"zoom_{p['id']}"):
                                     show_post_modal(p)
                                 
-                                # 관리자 전용 즉시 삭제 버튼
+                                # [해결] 삭제 모드 시 썸네일 아래에 즉시 삭제 버튼 노출
                                 if st.session_state.is_admin and st.session_state.edit_mode:
                                     st.markdown('<div class="del-btn-style">', unsafe_allow_html=True)
-                                    if st.button(f"❌ 삭제", key=f"th_del_{p['id']}"):
+                                    if st.button("❌ 삭제", key=f"th_del_{p['id']}"):
                                         db.collection(CHEER_COLLECTION).document(p['id']).delete()
                                         st.rerun()
                                     st.markdown('</div>', unsafe_allow_html=True)
@@ -339,4 +352,5 @@ with main_canvas:
         st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; color:#C7C7CC; font-size:12px; margin-top:40px; padding-bottom: 20px;'>© 2026 LG Innotek Talent Development Team</p>", unsafe_allow_html=True)
+
 
