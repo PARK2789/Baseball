@@ -15,7 +15,7 @@ from PIL import Image, ImageOps
 import io
 
 # 1. 페이지 설정 (최상단)
-st.set_page_config(page_title="CEO Talk+ Victory", page_icon="⚾️", layout="centered")
+st.set_page_config(page_title="CEO Talk+", page_icon="⚾️", layout="centered")
 
 # --- [성식님 제안 & GPT 수정: 최상단 고정 스크립트 완벽 유지] ---
 def force_scroll_top():
