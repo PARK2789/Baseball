@@ -173,9 +173,9 @@ def build_gallery_component_html(cheers):
     """
     갤러리 화면 전용 렌더링입니다.
     - Streamlit markdown에 긴 base64 HTML을 직접 넣지 않고 components.html iframe으로 렌더링합니다.
-    - 그래서 HTML이 텍스트로 노출되는 문제를 방지합니다.
     - 3열 정사각 썸네일을 유지합니다.
-    - 사진 클릭 시 새 페이지 이동 없이 같은 화면 안에서 확대 상세 팝업을 띄웁니다.
+    - 사진 클릭 시 같은 컴포넌트 안에서 상세 팝업을 띄웁니다.
+    - 확대 시 썸네일/카드가 뒤에 겹쳐 보이지 않도록 팝업 레이어를 완전 불투명하게 처리합니다.
     """
     safe_items = []
     for p in cheers:
@@ -192,7 +192,10 @@ def build_gallery_component_html(cheers):
 
     items_json = json.dumps(safe_items, ensure_ascii=False)
     rows = max(1, (len(safe_items) + 2) // 3)
-    component_height = min(max(rows * 150 + 40, 220), 1200)
+
+    # 팝업이 iframe 내부에서 열리기 때문에, 상세 카드가 잘리지 않도록 최소 높이를 확보합니다.
+    # 사진이 많을 때는 갤러리 높이를 우선하되, 너무 길어지지 않게 제한합니다.
+    component_height = min(max(rows * 150 + 40, 620), 1200)
 
     html_doc = f"""
 <!doctype html>
@@ -205,8 +208,14 @@ def build_gallery_component_html(cheers):
     html, body {{
         margin: 0;
         padding: 0;
+        width: 100%;
+        min-height: 100%;
         background: transparent;
         font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;
+    }}
+    body.modal-open {{
+        overflow: hidden;
+        background: transparent;
     }}
     .gallery-grid {{
         display: grid;
@@ -235,96 +244,100 @@ def build_gallery_component_html(cheers):
         display: block;
         object-fit: cover;
     }}
-    /* 팝업이 열렸을 때 뒤쪽 썸네일이 비쳐서 '사진이 겹쳐 보이는' 현상 방지 */
-    body.modal-open .gallery-grid {{
-        visibility: hidden;
-    }}
+
+    /* 확대 팝업: iframe 전체를 덮고, 뒤쪽 썸네일이 비치지 않도록 배경을 진하게 처리 */
     .modal {{
         display: none;
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: rgba(0,0,0,0.42);
-        padding: 12px;
+        background: rgba(0,0,0,0.74);
+        padding: 14px;
         align-items: center;
         justify-content: center;
     }}
     .modal.open {{ display: flex; }}
+
     .modal-card {{
         position: relative;
         width: min(100%, 520px);
-        max-height: 88vh;
+        max-height: calc(100vh - 28px);
         background: #FFFFFF;
-        border-radius: 18px;
+        border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 12px 36px rgba(0,0,0,0.28);
+        box-shadow: 0 14px 40px rgba(0,0,0,0.35);
         display: flex;
         flex-direction: column;
     }}
-    .modal-img-wrap {{
+    .modal-img-area {{
         width: 100%;
         background: #FFFFFF;
+        padding: 14px 14px 0 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 12px 12px 0 12px;
-        max-height: 58vh;
-        overflow: hidden;
+        flex: 0 1 auto;
+        min-height: 0;
     }}
     .modal-img {{
         display: block;
         width: auto;
-        max-width: 100%;
         height: auto;
-        max-height: calc(58vh - 12px);
+        max-width: 100%;
+        max-height: 52vh;
         object-fit: contain;
         border-radius: 12px;
-        background: transparent;
+        background: #FFFFFF;
     }}
     .modal-body {{
-        padding: 14px 16px 16px 16px;
+        padding: 16px 18px 18px 18px;
         color: #1C1C1E;
         background: #FFFFFF;
-        flex: 0 0 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }}
     .modal-name {{
-        font-size: 18px;
-        font-weight: 800;
+        font-size: 20px;
+        font-weight: 900;
         margin-bottom: 8px;
+        line-height: 1.25;
     }}
     .modal-text {{
-        font-size: 15px;
+        font-size: 16px;
         line-height: 1.45;
         white-space: pre-wrap;
         word-break: keep-all;
     }}
     .modal-time {{
-        margin-top: 10px;
-        font-size: 12px;
+        margin-top: 12px;
+        font-size: 13px;
         color: #8E8E93;
     }}
     .close-btn {{
         position: absolute;
         top: 10px;
         right: 10px;
-        z-index: 2;
-        width: 34px;
-        height: 34px;
+        z-index: 3;
+        width: 38px;
+        height: 38px;
         border: 0;
         border-radius: 999px;
-        background: rgba(255,255,255,0.94);
+        background: rgba(255,255,255,0.96);
         color: #111;
-        font-size: 24px;
-        line-height: 34px;
+        font-size: 28px;
+        line-height: 36px;
         cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.22);
     }}
     @media (max-width: 430px) {{
-        .modal {{ padding: 8px; }}
-        .modal-card {{ width: 100%; max-height: 86vh; border-radius: 16px; }}
-        .modal-img-wrap {{ max-height: 52vh; padding: 10px 10px 0 10px; }}
-        .modal-img {{ max-height: calc(52vh - 10px); }}
-        .modal-body {{ padding: 13px 15px 15px 15px; }}
+        .modal {{ padding: 10px; align-items: flex-start; padding-top: 16px; }}
+        .modal-card {{ width: 100%; max-height: calc(100vh - 32px); border-radius: 18px; }}
+        .modal-img-area {{ padding: 12px 12px 0 12px; }}
+        .modal-img {{ max-height: 44vh; }}
+        .modal-body {{ padding: 15px 16px 17px 16px; }}
+        .modal-name {{ font-size: 20px; }}
+        .modal-text {{ font-size: 16px; }}
+        .close-btn {{ width: 40px; height: 40px; line-height: 38px; }}
     }}
 </style>
 </head>
@@ -332,9 +345,11 @@ def build_gallery_component_html(cheers):
     <div id=\"gallery\" class=\"gallery-grid\"></div>
 
     <div id=\"modal\" class=\"modal\" aria-hidden=\"true\">
-        <button class=\"close-btn\" id=\"closeBtn\" type=\"button\">×</button>
-        <div class=\"modal-card\">
-            <img id=\"modalImg\" class=\"modal-img\" src=\"\" alt=\"\" />
+        <div class=\"modal-card\" role=\"dialog\" aria-modal=\"true\">
+            <button class=\"close-btn\" id=\"closeBtn\" type=\"button\" aria-label=\"닫기\">×</button>
+            <div class=\"modal-img-area\">
+                <img id=\"modalImg\" class=\"modal-img\" src=\"\" alt=\"\" />
+            </div>
             <div class=\"modal-body\">
                 <div id=\"modalName\" class=\"modal-name\"></div>
                 <div id=\"modalText\" class=\"modal-text\"></div>
