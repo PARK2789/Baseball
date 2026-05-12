@@ -169,33 +169,218 @@ def show_post_modal(post):
             st.rerun()
 
 
-def build_gallery_html(cheers):
+def build_gallery_component_html(cheers):
     """
-    갤러리 화면만 HTML/CSS grid로 렌더링합니다.
-    사진 클릭 시 같은 앱 URL에 gallery_post 파라미터를 붙이고,
-    Python 영역에서 해당 파라미터를 감지해 st.dialog를 띄웁니다.
-    새 브라우저 탭이나 별도 상세 페이지를 만들지 않습니다.
+    갤러리 화면 전용 렌더링입니다.
+    - Streamlit markdown에 긴 base64 HTML을 직접 넣지 않고 components.html iframe으로 렌더링합니다.
+    - 그래서 HTML이 텍스트로 노출되는 문제를 방지합니다.
+    - 3열 정사각 썸네일을 유지합니다.
+    - 사진 클릭 시 새 페이지 이동 없이 같은 화면 안에서 확대 상세 팝업을 띄웁니다.
     """
-    html = ['<div class="gallery-grid">']
-
+    safe_items = []
     for p in cheers:
-        post_id = str(p.get("id", ""))
-        img = p.get("image", "")
-        name = str(p.get("name", "사진"))
+        img = str(p.get("image", "")).strip()
+        if not img:
+            continue
+        safe_items.append({
+            "id": str(p.get("id", "")),
+            "name": str(p.get("name", "사진")),
+            "text": str(p.get("text", "")),
+            "time": p.get("timestamp", datetime.now()).strftime("%H:%M") if hasattr(p.get("timestamp", None), "strftime") else "",
+            "image": img,
+        })
 
-        html.append(f"""
-            <a class="gallery-item" href="?gallery_post={quote(post_id)}" title="{name}">
-                <img src="data:image/jpeg;base64,{img}" alt="{name}">
-            </a>
-        """)
+    items_json = json.dumps(safe_items, ensure_ascii=False)
+    rows = max(1, (len(safe_items) + 2) // 3)
+    component_height = min(max(rows * 150 + 40, 220), 1200)
 
-    remainder = len(cheers) % 3
-    if remainder:
-        for _ in range(3 - remainder):
-            html.append('<div class="gallery-empty"></div>')
+    html_doc = f"""
+<!doctype html>
+<html lang=\"ko\">
+<head>
+<meta charset=\"utf-8\" />
+<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />
+<style>
+    * {{ box-sizing: border-box; }}
+    html, body {{
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif;
+    }}
+    .gallery-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        width: 100%;
+        padding: 2px 0 8px 0;
+    }}
+    .gallery-item {{
+        display: block;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        background: #F2F2F7;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        -webkit-tap-highlight-color: transparent;
+    }}
+    .gallery-item img {{
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+    }}
+    .modal {{
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: rgba(0,0,0,0.72);
+        padding: 18px;
+        align-items: center;
+        justify-content: center;
+    }}
+    .modal.open {{ display: flex; }}
+    .modal-card {{
+        width: min(100%, 520px);
+        max-height: 92vh;
+        background: #FFFFFF;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }}
+    .modal-img {{
+        width: 100%;
+        max-height: 62vh;
+        object-fit: contain;
+        background: #000;
+        display: block;
+    }}
+    .modal-body {{
+        padding: 16px 18px 18px 18px;
+        color: #1C1C1E;
+    }}
+    .modal-name {{
+        font-size: 18px;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }}
+    .modal-text {{
+        font-size: 15px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: keep-all;
+    }}
+    .modal-time {{
+        margin-top: 10px;
+        font-size: 12px;
+        color: #8E8E93;
+    }}
+    .close-btn {{
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.92);
+        color: #111;
+        font-size: 24px;
+        line-height: 38px;
+        cursor: pointer;
+    }}
+</style>
+</head>
+<body>
+    <div id=\"gallery\" class=\"gallery-grid\"></div>
 
-    html.append('</div>')
-    return "\n".join(html)
+    <div id=\"modal\" class=\"modal\" aria-hidden=\"true\">
+        <button class=\"close-btn\" id=\"closeBtn\" type=\"button\">×</button>
+        <div class=\"modal-card\">
+            <img id=\"modalImg\" class=\"modal-img\" src=\"\" alt=\"\" />
+            <div class=\"modal-body\">
+                <div id=\"modalName\" class=\"modal-name\"></div>
+                <div id=\"modalText\" class=\"modal-text\"></div>
+                <div id=\"modalTime\" class=\"modal-time\"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {{
+    const items = {items_json};
+    const gallery = document.getElementById('gallery');
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modalImg');
+    const modalName = document.getElementById('modalName');
+    const modalText = document.getElementById('modalText');
+    const modalTime = document.getElementById('modalTime');
+    const closeBtn = document.getElementById('closeBtn');
+
+    function escapeText(value) {{
+        return String(value || '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('\\"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }}
+
+    function openModal(item) {{
+        modalImg.src = 'data:image/jpeg;base64,' + item.image;
+        modalImg.alt = item.name || '사진';
+        modalName.innerHTML = '👤 ' + escapeText(item.name || '사진');
+        modalText.innerHTML = escapeText(item.text || '');
+        modalTime.innerHTML = item.time ? ('작성 시간: ' + escapeText(item.time)) : '';
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+    }}
+
+    function closeModal() {{
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        modalImg.src = '';
+    }}
+
+    items.forEach(function(item) {{
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'gallery-item';
+        btn.title = item.name || '사진';
+        btn.setAttribute('aria-label', (item.name || '사진') + ' 상세보기');
+
+        const img = document.createElement('img');
+        img.src = 'data:image/jpeg;base64,' + item.image;
+        img.alt = item.name || '사진';
+        img.loading = 'lazy';
+
+        btn.appendChild(img);
+        btn.addEventListener('click', function(e) {{
+            e.preventDefault();
+            openModal(item);
+        }});
+        gallery.appendChild(btn);
+    }});
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {{
+        if (e.target === modal) closeModal();
+    }});
+    document.addEventListener('keydown', function(e) {{
+        if (e.key === 'Escape') closeModal();
+    }});
+}})();
+</script>
+</body>
+</html>
+"""
+    return html_doc, component_height
 
 # --- [UI 렌더링 영역 시작] ---
 
@@ -317,15 +502,10 @@ with main_app_canvas:
             if not cheers:
                 st.info("아직 사진이 없습니다.")
             else:
-                # URL 파라미터로 선택된 사진이 있으면 현재 화면 위에 팝업 상세보기 표시
-                selected_post_id = st.query_params.get("gallery_post", None)
-                if selected_post_id:
-                    selected_post = next((p for p in cheers if str(p.get("id")) == str(selected_post_id)), None)
-                    if selected_post:
-                        show_post_modal(selected_post)
-
                 # 사진 자체를 클릭할 수 있는 3열 썸네일 갤러리
-                st.markdown(build_gallery_html(cheers), unsafe_allow_html=True)
+                # 긴 base64 HTML이 텍스트로 노출되지 않도록 components.html로 렌더링
+                gallery_html, gallery_height = build_gallery_component_html(cheers)
+                components.html(gallery_html, height=gallery_height, scrolling=False)
 
                 # 관리자 삭제 모드는 기존 기능 유지: 갤러리 아래에 삭제 버튼만 별도 제공
                 if st.session_state.is_admin and st.session_state.edit_mode:
