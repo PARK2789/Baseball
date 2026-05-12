@@ -502,7 +502,7 @@ with main_app_canvas:
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
         
         st.markdown("#### 💬 현장 소통 & 응원")
-        if st.button("📸 승리의 응원벽 참여"): navigate_to('cheer')
+        if st.button("📸 함께 응원하기"): navigate_to('cheer')
         if st.button("📣 LG트윈스 응원가 배우기"): navigate_to('cheer_video')
         
         st.markdown("#### 🏟️ 실시간 경기 정보")
@@ -519,7 +519,7 @@ with main_app_canvas:
 
     # [2] CHEER FEED VIEW (3열 바둑판 및 직접 삭제 모드)
     elif st.session_state.view == 'cheer':
-        st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 승리의 응원벽</h2>', unsafe_allow_html=True)
+        st.markdown('<h2 style="font-weight:900; margin-bottom:5px;">📸 함께 응원하기</h2>', unsafe_allow_html=True)
         
         if st.session_state.is_admin:
             st.session_state.edit_mode = st.toggle("🛠 관리자 삭제 모드 활성화", value=st.session_state.edit_mode)
