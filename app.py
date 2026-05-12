@@ -497,7 +497,7 @@ main_app_canvas = st.container()
 with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">5/12(화) CEO Talk⁺</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
         
@@ -530,6 +530,11 @@ with main_app_canvas:
             if st.button("✨ 현장 사진 올리기"): navigate_to('upload')
         with c2: 
             if st.button("🎯 경기 예상하기"): navigate_to('event_upload')
+
+        # [수정] 함께 응원하기 화면의 메인 복귀 버튼을 경기 예상하기 버튼 바로 아래로 이동
+        st.markdown('<div class="secondary-btn" style="margin-top:8px; margin-bottom:18px;">', unsafe_allow_html=True)
+        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if db:
             # 이벤트 현황
@@ -573,9 +578,6 @@ with main_app_canvas:
                                         st.rerun()
                                     st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
-        if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # [3] CHEER VIDEO / [4] UPLOAD / [5] EVENT / [6] DETAIL (동일 유지)
     elif st.session_state.view == 'cheer_video':
