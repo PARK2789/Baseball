@@ -245,16 +245,17 @@ def build_gallery_component_html(cheers):
         object-fit: cover;
     }}
 
-    /* 확대 팝업: iframe 전체를 덮고, 뒤쪽 썸네일이 비치지 않도록 배경을 진하게 처리 */
+    /* 확대 팝업: 검은색/회색 배경 제거 */
     .modal {{
         display: none;
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: rgba(0,0,0,0.74);
+        background: transparent;
         padding: 14px;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
+        pointer-events: none;
     }}
     .modal.open {{ display: flex; }}
 
@@ -265,9 +266,10 @@ def build_gallery_component_html(cheers):
         background: #FFFFFF;
         border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
         display: flex;
         flex-direction: column;
+        pointer-events: auto;
     }}
     .modal-img-area {{
         width: 100%;
@@ -330,7 +332,7 @@ def build_gallery_component_html(cheers):
         box-shadow: 0 2px 10px rgba(0,0,0,0.22);
     }}
     @media (max-width: 430px) {{
-        .modal {{ padding: 10px; align-items: flex-start; padding-top: 16px; }}
+        .modal {{ padding: 10px; align-items: flex-start; padding-top: 16px; background: transparent; }}
         .modal-card {{ width: 100%; max-height: calc(100vh - 32px); border-radius: 18px; }}
         .modal-img-area {{ padding: 12px 12px 0 12px; }}
         .modal-img {{ max-height: 44vh; }}
