@@ -191,13 +191,14 @@ st.markdown(f"""
     .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
     
-    /* 갤러리 화면 전용: 모바일에서도 3열 바둑판 유지 */
+    /* 갤러리 화면 전용: 모바일에서도 작은 3열 썸네일 유지 */
     div[data-testid="stHorizontalBlock"]:has(.gallery-cell) {{
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         gap: 0.35rem !important;
         align-items: flex-start !important;
+        margin-bottom: 0.35rem !important;
     }}
 
     div[data-testid="stHorizontalBlock"]:has(.gallery-cell) > div[data-testid="column"] {{
@@ -205,14 +206,7 @@ st.markdown(f"""
         width: calc(33.333% - 0.25rem) !important;
         min-width: 0 !important;
         max-width: calc(33.333% - 0.25rem) !important;
-    }}
-
-    div[data-testid="column"]:has(.gallery-cell) img {{
-        width: 100% !important;
-        aspect-ratio: 1 / 1 !important;
-        object-fit: cover !important;
-        border-radius: 10px !important;
-        display: block !important;
+        padding: 0 !important;
     }}
 
     .gallery-cell {{
@@ -222,16 +216,58 @@ st.markdown(f"""
         overflow: hidden;
     }}
 
-    .gallery-btn button {{ 
-        height: 2.2em !important;
-        min-height: 2.2em !important;
-        font-size: 10px !important; 
-        margin-top: 4px !important;
+    /* 사진 클릭용 버튼을 썸네일처럼 보이게 처리 */
+    .gallery-thumb-button-wrap div[data-testid="stButton"] {{
+        margin: 0 !important;
         padding: 0 !important;
-        border-radius: 8px !important; 
     }}
 
-    .del-btn-style button {{ background-color: #FF3B30 !important; color: white !important; }}
+    .gallery-thumb-button-wrap div[data-testid="stButton"] > button {{
+        width: 100% !important;
+        height: 92px !important;
+        min-height: 92px !important;
+        max-height: 92px !important;
+        border-radius: 10px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        overflow: hidden !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+        box-shadow: none !important;
+    }}
+
+    .gallery-thumb-button-wrap div[data-testid="stButton"] > button:hover {{
+        filter: brightness(0.92);
+        transform: scale(0.99);
+    }}
+
+    .gallery-thumb-button-wrap div[data-testid="stButton"] > button p,
+    .gallery-thumb-button-wrap div[data-testid="stButton"] > button div {{
+        color: transparent !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+    }}
+
+    @media (min-width: 420px) {{
+        .gallery-thumb-button-wrap div[data-testid="stButton"] > button {{
+            height: 110px !important;
+            min-height: 110px !important;
+            max-height: 110px !important;
+        }}
+    }}
+
+    .del-btn-style button {{
+        background-color: #FF3B30 !important;
+        color: white !important;
+        height: 2.1em !important;
+        min-height: 2.1em !important;
+        font-size: 10px !important;
+        margin-top: 4px !important;
+        padding: 0 !important;
+        border-radius: 8px !important;
+    }}
 
     .nav-btn-container {{ margin-top: 60px !important; padding-top: 10px; }}
 
@@ -305,21 +341,38 @@ with main_app_canvas:
                 st.info("아직 사진이 없습니다.")
             else:
                 # 갤러리 화면만 3열 바둑판으로 고정합니다.
-                # 다른 st.columns 영역에는 영향을 주지 않도록 각 썸네일 컬럼에 gallery-cell 마커를 넣습니다.
+                # 사진 버튼 자체를 썸네일처럼 보여주고, 클릭 시 새 페이지 이동 없이 dialog 상세보기만 실행합니다.
                 for i in range(0, len(cheers), 3):
                     row_cols = st.columns(3, gap="small")
                     for j in range(3):
                         if i + j < len(cheers):
                             p = cheers[i + j]
+                            safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", str(p.get("id", i + j)))
+                            thumb_label = f"gallery_thumb_{safe_id}"
+
                             with row_cols[j]:
                                 st.markdown('<div class="gallery-cell"></div>', unsafe_allow_html=True)
-                                st.image(f"data:image/jpeg;base64,{p['image']}", use_container_width=True)
-                                
-                                # 하단 버튼 그룹
-                                st.markdown('<div class="gallery-btn">', unsafe_allow_html=True)
-                                if st.button(f"🔍 {p['name'][:3]}..", key=f"zoom_{p['id']}"):
+
+                                # 각 버튼에 해당 사진을 배경 이미지로 지정합니다.
+                                # st.button 기능을 그대로 사용하므로 클릭하면 팝업 상세보기만 열립니다.
+                                st.markdown(
+                                    f"""
+                                    <style>
+                                    div[data-testid="stButton"]:has(button[aria-label="{thumb_label}"]) > button,
+                                    button[aria-label="{thumb_label}"] {{
+                                        background-image: url("data:image/jpeg;base64,{p['image']}") !important;
+                                    }}
+                                    </style>
+                                    <div class="gallery-thumb-button-wrap">
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+
+                                if st.button(thumb_label, key=f"zoom_{p['id']}"):
                                     show_post_modal(p)
-                                
+
+                                st.markdown('</div>', unsafe_allow_html=True)
+
                                 # [해결] 삭제 모드 시 썸네일 아래에 즉시 삭제 버튼 노출
                                 if st.session_state.is_admin and st.session_state.edit_mode:
                                     st.markdown('<div class="del-btn-style">', unsafe_allow_html=True)
@@ -327,7 +380,7 @@ with main_app_canvas:
                                         db.collection(CHEER_COLLECTION).document(p['id']).delete()
                                         st.rerun()
                                     st.markdown('</div>', unsafe_allow_html=True)
-                                st.markdown('</div>', unsafe_allow_html=True)
+
 
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
