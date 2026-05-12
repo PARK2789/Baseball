@@ -526,9 +526,9 @@ with main_app_canvas:
 
         c1, c2 = st.columns(2)
         with c1: 
-            if st.button("✨ 나도 응원 남기기"): navigate_to('upload')
+            if st.button("✨ 현장 사진 올리기"): navigate_to('upload')
         with c2: 
-            if st.button("🎯 이벤트 참여하기"): navigate_to('event_upload')
+            if st.button("🎯 경기 예상하기"): navigate_to('event_upload')
 
         if db:
             # 이벤트 현황
