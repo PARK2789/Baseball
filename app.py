@@ -128,31 +128,11 @@ EVENT_COLLECTION = f"artifacts/{app_id}/public/data/events"
 
 # programs.json 로드
 program_data = {}
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROGRAMS_JSON_PATH = os.path.join(BASE_DIR, "programs.json")
-
-try:
-    with open(PROGRAMS_JSON_PATH, "r", encoding="utf-8") as f:
-        program_data = json.load(f)
-
-except FileNotFoundError:
-    st.error(
-        f"❌ programs.json 파일을 찾을 수 없습니다.\n"
-        f"확인 경로: {PROGRAMS_JSON_PATH}"
-    )
-
-except json.JSONDecodeError as e:
-    st.error(
-        f"❌ programs.json 문법(JSON 형식) 오류\n"
-        f"{e}"
-    )
-
-except Exception as e:
-    st.error(
-        f"❌ programs.json 로딩 오류\n"
-        f"{e}"
-    )
+if os.path.exists("programs.json"):
+    try:
+        with open("programs.json", "r", encoding="utf-8") as f:
+            program_data = json.load(f)
+    except: pass
 
 # [해결] 관리자 로그인 상태 유지 강화
 with st.sidebar:
@@ -561,32 +541,14 @@ with main_app_canvas:
             ev_docs = db.collection(EVENT_COLLECTION).stream()
             events = sorted([doc.to_dict() | {"id": doc.id} for doc in ev_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             if events:
-                st.markdown("""
-                    <div style="
-                        background:#F8F8FA;
-                        border:1px solid #E5E5EA;
-                        border-radius:18px;
-                        padding:16px 18px;
-                        margin-bottom:18px;
-                    ">
-                        <div style="
-                            font-size:16px;
-                            font-weight:800;
-                            margin-bottom:12px;
-                            color:#1C1C1E;
-                        ">
-                            🎯 오늘의 주인공 예측 현황
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                for ev in events[:5]:
-                    ec, dc = st.columns([4, 1])
-                    ec.markdown(f"• **{ev['name']}**: {ev['hr_player']} / {ev['hit_player']}")
-                    if st.session_state.is_admin:
-                        if dc.button("삭제", key=f"del_ev_{ev['id']}"):
-                            db.collection(EVENT_COLLECTION).document(ev['id']).delete()
-                            st.rerun()
+                with st.expander(f"🎯 오늘의 주인공 예측 현황", expanded=True):
+                    for ev in events[:5]:
+                        ec, dc = st.columns([4, 1])
+                        ec.markdown(f"• **{ev['name']}**: {ev['hr_player']}/{ev['hit_player']}")
+                        if st.session_state.is_admin:
+                            if dc.button("삭제", key=f"del_ev_{ev['id']}"):
+                                db.collection(EVENT_COLLECTION).document(ev['id']).delete()
+                                st.rerun()
 
             st.markdown("---")
             cheer_docs = db.collection(CHEER_COLLECTION).stream()
@@ -665,7 +627,30 @@ with main_app_canvas:
         item = program_data.get(name, {})
         detail_bg = get_base64_img(item.get("bg_file", ""))
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
-        st.markdown(f"""<div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;"><div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div><div style="font-size: 26px; font-weight: 900;">{name}</div></div></div><div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;"><h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3><p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p><hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">{points_html}</div>""", unsafe_allow_html=True)
+
+        # [추가] programs.json의 extra_img 항목이 있으면 상세 페이지에 추가 이미지 표시
+        # - extra_img는 문자열 1개 또는 리스트 모두 지원
+        # - 예: "extra_img": "guide.jpg" 또는 "extra_img": ["guide1.jpg", "guide2.jpg"]
+        extra_img_value = item.get("extra_img", [])
+        if isinstance(extra_img_value, str):
+            extra_img_list = [extra_img_value]
+        elif isinstance(extra_img_value, list):
+            extra_img_list = extra_img_value
+        else:
+            extra_img_list = []
+
+        extra_img_html = ""
+        for extra_path in extra_img_list:
+            extra_b64 = get_base64_img(extra_path)
+            if extra_b64:
+                extra_img_html += (
+                    f'<div style="margin-top:18px;">'
+                    f'<img src="data:image/jpeg;base64,{extra_b64}" '
+                    f'style="width:100%; border-radius:18px; display:block; border:1px solid #E5E5EA;" />'
+                    f'</div>'
+                )
+
+        st.markdown(f"""<div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;"><div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div><div style="font-size: 26px; font-weight: 900;">{name}</div></div></div><div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;"><h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3><p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p><hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">{points_html}{extra_img_html}</div>""", unsafe_allow_html=True)
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
