@@ -235,12 +235,16 @@ def build_gallery_component_html(cheers):
         display: block;
         object-fit: cover;
     }}
+    /* 팝업이 열렸을 때 뒤쪽 썸네일이 비쳐서 '사진이 겹쳐 보이는' 현상 방지 */
+    body.modal-open .gallery-grid {{
+        visibility: hidden;
+    }}
     .modal {{
         display: none;
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: rgba(0,0,0,0.55);
+        background: rgba(0,0,0,0.42);
         padding: 12px;
         align-items: center;
         justify-content: center;
@@ -259,11 +263,11 @@ def build_gallery_component_html(cheers):
     }}
     .modal-img-wrap {{
         width: 100%;
-        background: #F2F2F7;
+        background: #FFFFFF;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0;
+        padding: 12px 12px 0 12px;
         max-height: 58vh;
         overflow: hidden;
     }}
@@ -272,8 +276,9 @@ def build_gallery_component_html(cheers):
         width: auto;
         max-width: 100%;
         height: auto;
-        max-height: 58vh;
+        max-height: calc(58vh - 12px);
         object-fit: contain;
+        border-radius: 12px;
         background: transparent;
     }}
     .modal-body {{
@@ -317,8 +322,8 @@ def build_gallery_component_html(cheers):
     @media (max-width: 430px) {{
         .modal {{ padding: 8px; }}
         .modal-card {{ width: 100%; max-height: 86vh; border-radius: 16px; }}
-        .modal-img-wrap {{ max-height: 52vh; }}
-        .modal-img {{ max-height: 52vh; }}
+        .modal-img-wrap {{ max-height: 52vh; padding: 10px 10px 0 10px; }}
+        .modal-img {{ max-height: calc(52vh - 10px); }}
         .modal-body {{ padding: 13px 15px 15px 15px; }}
     }}
 </style>
@@ -364,6 +369,7 @@ def build_gallery_component_html(cheers):
         modalName.innerHTML = '👤 ' + escapeText(item.name || '사진');
         modalText.innerHTML = escapeText(item.text || '');
         modalTime.innerHTML = item.time ? ('작성 시간: ' + escapeText(item.time)) : '';
+        document.body.classList.add('modal-open');
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
     }}
@@ -371,6 +377,7 @@ def build_gallery_component_html(cheers):
     function closeModal() {{
         modal.classList.remove('open');
         modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
         modalImg.src = '';
     }}
 
