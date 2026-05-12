@@ -242,7 +242,7 @@ def build_gallery_component_html(cheers):
         position: fixed;
         inset: 0;
         z-index: 999999;
-        background: transparent;
+        background: rgba(0,0,0,0.5);
         padding: 14px;
         align-items: flex-start;
         justify-content: center;
@@ -322,7 +322,7 @@ def build_gallery_component_html(cheers):
         box-shadow: 0 2px 10px rgba(0,0,0,0.22);
     }}
     @media (max-width: 430px) {{
-        .modal {{ padding: 10px; align-items: flex-start; padding-top: 16px; background: transparent; }}
+        .modal {{ padding: 10px; align-items: flex-start; padding-top: 16px; }}
         .modal-card {{ width: 100%; max-height: calc(100vh - 32px); border-radius: 18px; }}
         .modal-img-area {{ padding: 12px 12px 0 12px; }}
         .modal-img {{ max-height: 44vh; }}
@@ -410,30 +410,50 @@ if st.session_state.force_scroll or st.session_state.prev_view != st.session_sta
     st.session_state.force_scroll = False
     st.session_state.prev_view = st.session_state.view
 
+# [해결] 기기별 호환성 및 다크모드 대응 CSS
 hero_bg = get_base64_img("stadium.jpg") or get_base64_img("cheer.jpg")
 st.markdown(f"""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-    .stApp {{ font-family: 'Pretendard', sans-serif; background-color: #FFFFFF; }}
+    
+    /* 전체 배경 흰색 강제 및 글자색 다크 그레이 고정 */
+    .stApp {{ 
+        font-family: 'Pretendard', sans-serif; 
+        background-color: #FFFFFF !important; 
+        color: #1C1C1E !important; 
+    }}
+    
     .block-container {{ padding-top: 4.5rem !important; padding-bottom: 5rem !important; max-width: 100% !important; }}
+    
+    /* 갤럭시 겹침 방지를 위해 hero-section 여백 최적화 */
     .hero-section {{
         background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{hero_bg}');
         background-size: cover; background-position: center;
         padding: 130px 25px 40px 25px; border-radius: 0 0 35px 35px;
-        color: white; margin: -6.5rem -1rem 1.5rem -1rem;
+        color: white !important; margin: -5rem -1rem 1.5rem -1rem;
+        position: relative; z-index: 1;
     }}
-    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; }}
-    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; }}
-    .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white; font-weight: 600; height: 3.6em; border: none; }}
+    .hero-title {{ font-weight: 900; font-size: 36px; line-height: 1.1; letter-spacing: -1.5px; color: white !important; }}
+    
+    .info-box {{ background-color: #F8F8FA; padding: 18px 22px; border-radius: 20px; border: 1px solid #E5E5EA; margin-bottom: 12px; color: #1C1C1E !important; }}
+    
+    .stButton>button {{ width: 100%; border-radius: 16px; background-color: #3A3A3C; color: white !important; font-weight: 600; height: 3.6em; border: none; }}
     .secondary-btn button {{ background-color: #E5E5EA !important; color: #1C1C1E !important; }}
+    
+    /* 모바일 가로 배열 유지 */
     div[data-testid="column"] {{ width: 32% !important; flex: 1 1 32% !important; min-width: 32% !important; }}
     div[data-testid="stHorizontalBlock"] {{ display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 5px !important; }}
+    
     .program-card {{
         position: relative; height: 180px; border-radius: 24px; margin-bottom: 10px; 
         overflow: hidden; background-size: cover; background-position: center; 
         display: flex; flex-direction: column; justify-content: flex-end; padding: 22px; border: 1px solid #E5E5EA;
     }}
-    .card-content {{ position: relative; z-index: 2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); }}
+    .card-content {{ position: relative; z-index: 2; text-shadow: 0px 2px 4px rgba(0,0,0,0.5); color: white !important; }}
+    
+    /* 텍스트 가독성 강제 (아이폰 다크모드 대응) */
+    p, span, h1, h2, h3, h4, div {{ color: #1C1C1E; }}
+    .hero-section *, .card-content * {{ color: white !important; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -442,18 +462,19 @@ main_app_canvas = st.container()
 with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">5/12(화) CEO Talk⁺</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500; color:white;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
+        
         st.markdown("#### 💬 현장 소통 & 응원")
         if st.button("📸 함께 응원하기"): navigate_to('cheer')
         if st.button("📣 LG트윈스 응원가 배우기"): navigate_to('cheer_video')
         st.markdown("#### 🏟️ 실시간 경기 정보")
         naver_url = "https://m.sports.naver.com/game/20260512SSLG02026/cheer"
-        st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="margin-bottom: 25px;"><a href="{naver_url}" target="_blank" style="text-decoration: none;"><div style="background-color: #03C75A; color: white !important; padding: 18px; border-radius: 18px; text-align: center; font-weight: 700;">⚾️ 네이버 스포츠 실시간 응원톡</div></a></div>""", unsafe_allow_html=True)
         for name, info in program_data.items():
             card_bg = get_base64_img(info.get("bg_file", ""))
-            st.markdown(f"""<div class="program-card" style="background-image: url('data:image/jpeg;base64,{card_bg}');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white;">{name}</div></div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="program-card" style="background-image: url('data:image/jpeg;base64,{card_bg}');"><div class="card-content"><div style="font-size:11px; font-weight:800; color:white !important; background:rgba(0,0,0,0.4); display:inline-block; padding:2px 8px; border-radius:4px; margin-bottom:4px;">{info.get("tag")}</div><div style="font-size: 20px; font-weight: 800; color:white !important;">{name}</div></div></div>""", unsafe_allow_html=True)
             if st.button(f"{name} 상세보기", key=f"btn_{name}"): navigate_to('detail', name)
         st.markdown(f"""<div class="info-box" style="text-align:center; margin-top:35px; background-color: #F2F2F7; border: none;"><div style="font-weight:800; color:#3A3A3C; font-size:14px; margin-bottom:6px;">📞 운영 및 비상 연락처</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">인재육성팀 <b>김선화 팀장</b><br><a href="tel:010-4488-5567" style="text-decoration:none; color:#007AFF; font-weight:700; font-size:16px;">010-4488-5567</a></div></div>""", unsafe_allow_html=True)
 
@@ -513,7 +534,7 @@ with main_app_canvas:
 
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-        c_name = st.text_input("설명(실명으로 작성해주세요)")
+        c_name = st.text_input("닉네임 또는 조")
         c_text = st.text_area("현장 소감")
         c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
         if st.button("✅ 게시하기"):
@@ -525,7 +546,7 @@ with main_app_canvas:
 
     elif st.session_state.view == 'event_upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">🎯 경기 예상하기</h2>', unsafe_allow_html=True)
-        e_name = st.text_input("성명(실명으로 작성해주세요)")
+        e_name = st.text_input("닉네임 또는 조")
         e_hr = st.text_input("⚾️ 첫 홈런 선수?")
         e_hit = st.text_input("⚾️ 첫 안타 선수?")
         if st.button("🚀 예측 제출"):
@@ -534,21 +555,20 @@ with main_app_canvas:
                 navigate_to('cheer')
         if st.button("❌ 취소"): navigate_to('cheer')
 
-    # [6] DETAIL VIEW (설명 아래 이미지 삽입 로직 추가)
+    # [6] DETAIL VIEW (추가 이미지 로직 삽입)
     elif st.session_state.view == 'detail':
         name = st.session_state.target
         item = program_data.get(name, {})
         detail_bg = get_base64_img(item.get("bg_file", ""))
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
         
-        # 상단 헤더 및 설명 (HTML 시작)
         st.markdown(f"""
         <div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg}'); 
                     background-size: cover; background-position: center; height: 180px; 
                     border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;">
             <div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-                <div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div>
-                <div style="font-size: 26px; font-weight: 900;">{name}</div>
+                <div style="font-size: 11px; font-weight: 700; opacity: 0.8; color: white !important;">{item.get('tag')}</div>
+                <div style="font-size: 26px; font-weight: 900; color: white !important;">{name}</div>
             </div>
         </div>
         <div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;">
@@ -556,14 +576,13 @@ with main_app_canvas:
             <p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p>
         """, unsafe_allow_html=True)
 
-        # [수정] extra_img 필드가 있다면 설명 아래에 이미지 삽입
+        # [해결] extra_img 필드가 있으면 설명 바로 아래 이미지 삽입
         extra_img_file = item.get("extra_img")
         if extra_img_file:
             ex_img_b64 = get_base64_img(extra_img_file)
             if ex_img_b64:
                 st.markdown(f'<img src="data:image/jpeg;base64,{ex_img_b64}" style="width:100%; border-radius:15px; margin: 10px 0 20px 0;">', unsafe_allow_html=True)
 
-        # 포인트 리스트 및 박스 닫기 (HTML 끝)
         st.markdown(f"""
             <hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">
             {points_html}
