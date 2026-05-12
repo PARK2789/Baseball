@@ -497,7 +497,7 @@ main_app_canvas = st.container()
 with main_app_canvas:
     # [1] HOME VIEW
     if st.session_state.view == 'home':
-        st.markdown(f'<div class="hero-section"><div class="hero-title">5/12(화) CEO Talk⁺</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="hero-section"><div class="hero-title">CEO Talk⁺<br>Victory Edition</div><div style="font-size: 16px; opacity: 0.9; margin-top: 10px; font-weight:500;">함께 소통하고 함께 승리합니다!</div></div>', unsafe_allow_html=True)
         st.markdown("#### 🚌 이동 및 집결 안내")
         st.markdown(f"""<div class="info-box"><div style="font-weight:800; color:#FF3B30; font-size:15px; margin-bottom:6px;">📍 단체 버스 탑승 정보</div><div style="font-size:15px; color:#1C1C1E; line-height:1.6;">• <b>장소:</b> E1/E3 동 정문 앞 버스 탑승<br>• <b>집결:</b> 16:25까지 집결 완료<br>• <b>출발:</b> 16:30 정시 출발</div></div>""", unsafe_allow_html=True)
         
@@ -541,10 +541,28 @@ with main_app_canvas:
             ev_docs = db.collection(EVENT_COLLECTION).stream()
             events = sorted([doc.to_dict() | {"id": doc.id} for doc in ev_docs], key=lambda x: x.get('timestamp', datetime.min), reverse=True)
             if events:
-                with st.expander(f"🎯 오늘의 주인공 예측 현황", expanded=True):
+                st.markdown("""
+                    <div style="
+                        background:#F8F8FA;
+                        border:1px solid #E5E5EA;
+                        border-radius:18px;
+                        padding:16px 18px;
+                        margin-bottom:18px;
+                    ">
+                        <div style="
+                            font-size:16px;
+                            font-weight:800;
+                            margin-bottom:12px;
+                            color:#1C1C1E;
+                        ">
+                            🎯 오늘의 주인공 예측 현황
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
                     for ev in events[:5]:
                         ec, dc = st.columns([4, 1])
-                        ec.markdown(f"• **{ev['name']}**: {ev['hr_player']}/{ev['hit_player']}")
+                        ec.markdown(f"• **{ev['name']}**: {ev['hr_player']} / {ev['hit_player']}")
                         if st.session_state.is_admin:
                             if dc.button("삭제", key=f"del_ev_{ev['id']}"):
                                 db.collection(EVENT_COLLECTION).document(ev['id']).delete()
@@ -589,7 +607,7 @@ with main_app_canvas:
 
     elif st.session_state.view == 'upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">✨ 응원 남기기</h2>', unsafe_allow_html=True)
-        c_name = st.text_input("이름(실명을 기입해주세요)")
+        c_name = st.text_input("닉네임 또는 조")
         c_text = st.text_area("현장 소감")
         c_file = st.file_uploader("사진 업로드", type=['jpg', 'jpeg', 'png'])
         if st.button("✅ 게시하기"):
@@ -607,10 +625,10 @@ with main_app_canvas:
 
     elif st.session_state.view == 'event_upload':
         st.markdown('<h2 style="font-weight:900; text-align:center;">🎯 경기 예상하기</h2>', unsafe_allow_html=True)
-        e_name = st.text_input("이름(실명을 기입해주세요)")
+        e_name = st.text_input("닉네임 또는 조")
         e_hr = st.text_input("⚾️ 첫 홈런 선수?")
         e_hit = st.text_input("⚾️ 첫 안타 선수?")
-        if st.button("🚀 제출하기"):
+        if st.button("🚀 예측 제출"):
             if e_name and e_hr and e_hit and db:
                 db.collection(EVENT_COLLECTION).add({"name": e_name, "hr_player": e_hr, "hit_player": e_hit, "timestamp": datetime.now()})
                 navigate_to('cheer')
@@ -627,30 +645,7 @@ with main_app_canvas:
         item = program_data.get(name, {})
         detail_bg = get_base64_img(item.get("bg_file", ""))
         points_html = "".join([f'<div style="margin-bottom:12px; font-size:15px; color:#3A3A3C;">• {p}</div>' for p in item.get("points", [])])
-
-        # [추가] programs.json의 extra_img 항목이 있으면 상세 페이지에 추가 이미지 표시
-        # - extra_img는 문자열 1개 또는 리스트 모두 지원
-        # - 예: "extra_img": "guide.jpg" 또는 "extra_img": ["guide1.jpg", "guide2.jpg"]
-        extra_img_value = item.get("extra_img", [])
-        if isinstance(extra_img_value, str):
-            extra_img_list = [extra_img_value]
-        elif isinstance(extra_img_value, list):
-            extra_img_list = extra_img_value
-        else:
-            extra_img_list = []
-
-        extra_img_html = ""
-        for extra_path in extra_img_list:
-            extra_b64 = get_base64_img(extra_path)
-            if extra_b64:
-                extra_img_html += (
-                    f'<div style="margin-top:18px;">'
-                    f'<img src="data:image/jpeg;base64,{extra_b64}" '
-                    f'style="width:100%; border-radius:18px; display:block; border:1px solid #E5E5EA;" />'
-                    f'</div>'
-                )
-
-        st.markdown(f"""<div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;"><div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div><div style="font-size: 26px; font-weight: 900;">{name}</div></div></div><div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;"><h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3><p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p><hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">{points_html}{extra_img_html}</div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="background: linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.4)), url('data:image/jpeg;base64,{detail_bg}'); background-size: cover; background-position: center; height: 180px; border-radius: 20px; margin: 0 0 15px 0; display: flex; align-items: flex-end; padding: 25px;"><div style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);"><div style="font-size: 11px; font-weight: 700; opacity: 0.8;">{item.get('tag')}</div><div style="font-size: 26px; font-weight: 900;">{name}</div></div></div><div style="background-color: #F8F8FA; padding: 30px; border-radius: 30px; border: 1px solid #E5E5EA;"><h3 style="margin:0 0 15px 0; font-weight:800; color:#1C1C1E;">{item.get('detail_title')}</h3><p style="font-size: 16px; color: #48484A; line-height: 1.6;">{item.get('desc')}</p><hr style="border: 0; border-top: 1px solid #E5E5EA; margin: 25px 0;">{points_html}</div>""", unsafe_allow_html=True)
         st.markdown('<div class="nav-btn-container secondary-btn">', unsafe_allow_html=True)
         if st.button("🏠 메인으로 돌아가기"): navigate_to('home')
         st.markdown('</div>', unsafe_allow_html=True)
