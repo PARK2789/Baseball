@@ -692,8 +692,8 @@ with main_app_canvas:
             if extra_b64:
                 extra_img_html += (
                     f'<div style="margin-top:18px;">'
-                    #f'<img src="data:image/jpeg;base64,{extra_b64}" '
-                    f'<img src="{extra_path}?v={datatime.now().timestamp()}" '
+                    f'<img src="data:image/jpeg;base64,{extra_b64}" '
+                    #f'<img src="{extra_path}?v={datatime.now().timestamp()}" '
                     f'style="width:100%; border-radius:18px; display:block; border:1px solid #E5E5EA;" />'
                     f'</div>'
                 )
